@@ -2,12 +2,12 @@
 #include "name.h"
 
 typedef struct _category {
-  float split;
-  Name *head, *tail;
-  struct _category *left, *right;
+	float split;
+	Name *head, *tail;
+	struct _category *left, *right;
 
-  float top;
-  struct _category *next, *prev;
+	float top;
+	struct _category *next, *prev;
 } Category;
 
 Category *create_category(void);

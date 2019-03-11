@@ -5,8 +5,8 @@
 
 // Name node
 typedef struct _name {
-  int value, time_stamp;
-  struct _name *next;
+   int value, time_stamp;
+   struct _name *next;
 } Name;
 
 // Name constructor
@@ -37,7 +37,7 @@ Name *create_name(int value, int time_stamp) {
          break;  
    }
 
-   Name *name = (Name*)malloc(sizeof(Name));
+   Name *name = malloc(sizeof(Name));
    assert(name != NULL);
    
    *name = (Name){value, time_stamp, NULL};
@@ -58,15 +58,14 @@ bool contain_name(Name *name, int value, int time) {
 }
 
 // Clone a name list (set tail to last name cloned)
-Name *tail = NULL;
-Name *clone_name(Name *src) {
-  if (src == NULL) {
-    return NULL;
-  }
-  Name *name = create_name(src->value, src->time_stamp);
-  name->next = clone_name(src->next);
-  tail = name;
-  return name;
+Name *clone_name(Name *src, Name **tail) {
+   if (src == NULL) {
+      return NULL;
+   }
+   Name *name = create_name(src->value, src->time_stamp);
+   name->next = clone_name(src->next, tail);
+   *tail = name;
+   return name;
 }
 
 // Deconstructor

@@ -18,7 +18,7 @@ Agent *create_agent(void) {
    Agent *new = malloc(sizeof(Agent));
    assert(new != NULL);
 
-   Agent **neighbours = malloc(new->capacity  * sizeof(Agent*));
+   Agent **neighbours = malloc(4 * sizeof(Agent*));
    assert(neighbours != NULL);
 
    *new = (Agent){create_category(), neighbours, 0, 4, 0, 0.0, 0.0, -1};
@@ -67,12 +67,12 @@ void negotiate(Agent *spk, Agent *lst, float x, float y, int time) {
    bool succ;
    if (time == -1) {
       succ = contain_name(lstx->head, mrn, -1)
-         && (!contain_name(lsty->head, mrn, -1));
+      && (!contain_name(lsty->head, mrn, -1));
    }
    else {
       // forgetting
       succ = contain_name(lstx->head, mrn, lst->time_stamp - time)
-         && (!contain_name(lsty->head, mrn, lst->time_stamp - time));
+      && (!contain_name(lsty->head, mrn, lst->time_stamp - time));
    }
 
    if (succ) {
@@ -95,7 +95,7 @@ void negotiate(Agent *spk, Agent *lst, float x, float y, int time) {
    lst->time_stamp++;
 }
 
-// Clone agent's tree, h, t & namecat
+   // Clone agent's tree, h, t & namecat
 Agent *clone_agent(Agent *agent) {
    Agent *new = create_agent();
    new->tree = clone_tree(agent->tree);

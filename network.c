@@ -16,11 +16,8 @@ typedef struct {
 
 // Generate float in range [0, 1)
 float frand(void) {
-   float f = (float)rand() / ((float)RAND_MAX + 1.0f);
-   if (f >= 1.0f) {
-      f = 0;
-   }
-   return f;
+   float f = ((float)rand()) / (((float)(RAND_MAX)) + 1.0);
+   return f >= 1.0 ? 0.0 : f;
 }
 
 // Create a network of n isolated nodes
@@ -163,6 +160,7 @@ void reconnect(Network *network, float h, float t) {
       for (int j = i + 1; j < network->n; j++) {
          edge_insert(network, i, j);
       }
+      printf("Agent: %d, Deg: %d", i, network->adj_list[i]->degree);
    }
 }
 

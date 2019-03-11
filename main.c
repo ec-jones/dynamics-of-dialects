@@ -1,3 +1,5 @@
+// TODO: tidy
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -330,7 +332,7 @@ int main(int argc, char **argv) {
    srand((unsigned) time(&t));
    clock_t begin = clock();
 
-   open("contact");
+   open("contact2");
    network = create_network(N);
    make_isolate(network, 0, 0);
 
@@ -350,6 +352,7 @@ int main(int argc, char **argv) {
       }
    }
 
+   names();
    save = clone_network(network);
    reconnect(network, 0, 0);
    step = 100.0l;
