@@ -23,7 +23,6 @@ Category *create_category(void) {
 }
 
 // Return the most relevant name
-// Cannot pass NULL
 int peek(Category *cat) {
   return cat->head->value;
 }
@@ -54,23 +53,9 @@ void enqueue(Category *cat, int value, int time_stamp) {
   }
 }
 
-// Clone a name list (set tail to last name cloned)
-Name *tail = NULL;
-Name *clone(Name *src) {
-  if (src == NULL) {
-    return NULL;
-  }
-  Name *name = create_name(src->value, src->time_stamp);
-  name->next = clone(src->next);
-  name->time_stamp = src->time_stamp;
-  tail = name;
-  return name;
-}
-
-// Copy names from one Category to another
-// Cannot pass NULL
+// Copy names from one category to another
 void namecpy(Category *dest, Category *src) {
-  dest->head = clone(src->head);
+  dest->head = clone_name(src->head);
   dest->tail = tail;
   tail = NULL;
 }
@@ -89,6 +74,18 @@ Category *get_category(Category *cat, float x) {
       cat = cat->right;
     }
   }
+}
+
+// Left most leaf of the tree
+Category *left_most(Category *cat) {
+   while(true) {
+      if (cat->split == -1 || cat == NULL) {
+         return cat;
+      }
+      else {
+         cat = cat->left;
+      }
+   }
 }
 
 // Split a node
@@ -119,65 +116,6 @@ void inner_split(Category *cat, float x, float y) {
   namecpy(cat->right, cat);
 }
 
-// Left most leaf of the tree
-Category *left_most(Category *cat) {
-   while(true) {
-      if (cat->split == -1 || cat == NULL) {
-         return cat;
-      }
-      else {
-         cat = cat->left;
-      }
-   }
-}
-
-// Print the linguistic category boundaries to file
-void dump_bounds(Category *cat, FILE *f) {
-   cat = left_most(cat);
-
-   while(true) {
-      if (cat == NULL) {
-         return;
-      }
-      else if (cat->next == NULL) {
-         fprintf(f, "%f", cat->top);
-         return;
-      }
-      else {
-         if (cat->head != NULL && cat->next->head != NULL
-             && peek(cat) != peek(cat->next)) {
-            fprintf(f, "%f ", cat->top);
-         }
-         cat = cat->next;
-      }
-   }
-}
-
-// The number of linguistic categories in a tree
-int lingcat_categories(Category *cat) {
-   cat = left_most(cat);
-
-   int acc = 1;
-   while(cat != NULL) {
-      bool inc = false;
-      if (cat->head == NULL) {
-        cat = cat->next;
-        continue;
-      }
-      else if (cat->next == NULL || cat->next->head == NULL) {
-        inc = true;
-      }
-      else {
-        inc = peek(cat) != peek(cat->next);
-      }
-      if (inc) {
-        acc++;
-      }
-      cat = cat->next;
-   }
-   return acc;
-}
-
 // Clone leaves
 Category *clone_tree(Category *cat) {
   if (cat == NULL) {
@@ -185,7 +123,7 @@ Category *clone_tree(Category *cat) {
   }
   cat = left_most(cat);
   Category *new = create_category();
-  new->head = clone(cat->head);
+  new->head = clone_name(cat->head);
   new->tail = tail;
   new->next = clone_tree(cat->next);
   new->top = cat->top;

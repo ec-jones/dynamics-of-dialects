@@ -57,6 +57,18 @@ bool contain_name(Name *name, int value, int time) {
    return false;
 }
 
+// Clone a name list (set tail to last name cloned)
+Name *tail = NULL;
+Name *clone_name(Name *src) {
+  if (src == NULL) {
+    return NULL;
+  }
+  Name *name = create_name(src->value, src->time_stamp);
+  name->next = clone_name(src->next);
+  tail = name;
+  return name;
+}
+
 // Deconstructor
 void delete_name(Name *name) {
    if (name != NULL) {

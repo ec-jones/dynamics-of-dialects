@@ -7,4 +7,6 @@ typedef struct _name {
 
 Name *create_name(int value, int time_stamp);
 bool contain_name(Name *name, int value, int time);
+extern Name *tail;
+Name *clone_name(Name *src);
 void delete_name(Name *name);

@@ -70,7 +70,7 @@ void open(char *out) {
 }
 
 // Close files
-void close() {
+void close(void) {
    if (mode & PERCAT) {
       fclose(p);
    }
@@ -92,6 +92,53 @@ void close() {
    if (mode & SPLIT_POP) {
       fclose(s);
    }
+}
+
+// Print the linguistic category boundaries to file
+void dump_bounds(Category *cat, FILE *f) {
+   cat = left_most(cat);
+
+   while(true) {
+      if (cat == NULL) {
+         return;
+      }
+      else if (cat->next == NULL) {
+         fprintf(f, "%f", cat->top);
+         return;
+      }
+      else {
+         if (cat->head != NULL && cat->next->head != NULL
+             && peek(cat) != peek(cat->next)) {
+            fprintf(f, "%f ", cat->top);
+         }
+         cat = cat->next;
+      }
+   }
+}
+
+// The number of linguistic categories in a tree
+int lingcat_categories(Category *cat) {
+   cat = left_most(cat);
+
+   int acc = 1;
+   while(cat != NULL) {
+      bool inc = false;
+      if (cat->head == NULL) {
+        cat = cat->next;
+        continue;
+      }
+      else if (cat->next == NULL || cat->next->head == NULL) {
+        inc = true;
+      }
+      else {
+        inc = peek(cat) != peek(cat->next);
+      }
+      if (inc) {
+        acc++;
+      }
+      cat = cat->next;
+   }
+   return acc;
 }
 
 // Write data to files
@@ -203,15 +250,15 @@ void get_stimuli(float *a, float *b, float h, float t) {
 
 // Get two agents
 void get_agents(Agent **spk, Agent **lst, Network *network) {
-   int n = frand() * N;
-   int m = frand() * network->adj_list[n]->degree;
+   int n = frand() * N,
+       m = frand() * network->adj_list[n]->degree;
 
    *spk = network->adj_list[n];
    *lst = network->adj_list[n]->neighbours[m];
 }
 
 int A = 0, B = 0, C = 0;
-void names() {
+void names(void) {
    for (int i = 0; i < N; i++) {
       Category *cat = left_most(network->adj_list[i]->tree);
       while(cat != NULL) {
@@ -245,7 +292,7 @@ void names() {
 }
 
 // Window overlap between poppulations
-void compare() {
+void compare(void) {
    names();
    fprintf(s, "A: %d\n", A);
    const float width = 0.1;
