@@ -5,7 +5,7 @@ typedef struct _node {
    struct _node **neighbours;
    int degree, capacity, time_stamp;
 
-   float h, t;
+   float h, t; //High pdf and Transition
    int namecat;
 } Agent;
 

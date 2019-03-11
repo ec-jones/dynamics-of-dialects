@@ -16,13 +16,15 @@ typedef struct _node {
 // Create a new (isolated) agent with uniform distribution
 Agent *create_agent() {
    Agent *new = malloc(sizeof(Agent));
+   assert(new != NULL);
    new->tree = create_category();
+   new->neighbours = malloc(new->capacity * sizeof(Category*));
+   assert(neighbours != NULL);
    new->degree = 0;
    new->capacity = 4;
-   new->neighbours = malloc(new->capacity * sizeof(Category*));
+   new->time_stamp = 0;
    new->h = 0;
    new->t = 0;
-   new->time_stamp = 0;
    new->namecat = -1;
    return new;
 }
@@ -34,11 +36,8 @@ int split_count = 0;
 // if so add new name (-1) to x's new agent
 void split(Agent *agent, float x, float y) {
    Category *cat = agent->tree;
-   while (true) {
-      if (cat == NULL) {
-         return;
-      }
-      else if (cat->split == -1) {
+   while (cat != NULL) {
+      if (cat->split == -1) {
          inner_split(cat, x, y);
          push(cat->left, agent->namecat, agent->time_stamp);
          push(cat->right, agent->namecat, agent->time_stamp);
@@ -60,8 +59,10 @@ void split(Agent *agent, float x, float y) {
 // Main negationation loop
 void negotiate(Agent *spk, Agent *lst, float x, float y, int time) {
    split(spk, x, y);
+
    Category *spkx = get_category(spk->tree, x);
    spkx->head->time_stamp = spk->time_stamp;
+
    int mrn = peek(spkx);
 
    Category *lstx = get_category(lst->tree, x);
@@ -77,6 +78,7 @@ void negotiate(Agent *spk, Agent *lst, float x, float y, int time) {
       succ = contain_name(lstx->head, mrn, lst->time_stamp - time)
          && (!contain_name(lsty->head, mrn, lst->time_stamp - time));
    }
+
    if (succ) {
       // Success
       delete_name(spkx->head->next);
@@ -97,7 +99,7 @@ void negotiate(Agent *spk, Agent *lst, float x, float y, int time) {
    lst->time_stamp++;
 }
 
-// Clone agent
+// Clone agent's tree, h, t & namecat
 Agent *clone_agent(Agent *agent) {
    Agent *new = create_agent();
    new->tree = clone_tree(agent->tree);
@@ -112,8 +114,10 @@ void delete_agent(Agent *agent) {
    if (agent != NULL) {
       delete_category(agent->tree);
       agent->tree = NULL;
+
       free(agent->neighbours);
       agent->neighbours = NULL;
+      
       free(agent);
       agent = NULL;
    }
