@@ -14,18 +14,14 @@ typedef struct _node {
 } Agent;
 
 // Create a new (isolated) agent with uniform distribution
-Agent *create_agent() {
+Agent *create_agent(void) {
    Agent *new = malloc(sizeof(Agent));
    assert(new != NULL);
-   new->tree = create_category();
-   new->neighbours = malloc(new->capacity * sizeof(Category*));
+
+   Agent **neighbours = malloc(new->capacity  * sizeof(Agent*));
    assert(neighbours != NULL);
-   new->degree = 0;
-   new->capacity = 4;
-   new->time_stamp = 0;
-   new->h = 0;
-   new->t = 0;
-   new->namecat = -1;
+
+   *new = (Agent){create_category(), neighbours, 0, 4, 0, 0.0, 0.0, -1};
    return new;
 }
 
@@ -117,7 +113,7 @@ void delete_agent(Agent *agent) {
 
       free(agent->neighbours);
       agent->neighbours = NULL;
-      
+
       free(agent);
       agent = NULL;
    }

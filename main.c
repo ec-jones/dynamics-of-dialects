@@ -304,7 +304,7 @@ int main(int argc, char **argv) {
    }
 
    save = clone_network(network);
-   reconnect(network);
+   reconnect(network, 0, 0);
    step = 100.0l;
 
    for (unsigned long long int i = 0; i < T; i++) {

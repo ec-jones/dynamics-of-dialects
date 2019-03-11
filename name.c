@@ -36,27 +36,25 @@ Name *create_name(int value, int time_stamp) {
          new_2 += 3;
          break;  
    }
+
    Name *name = (Name*)malloc(sizeof(Name));
    assert(name != NULL);
-   name->value = value;
-   name->time_stamp = time_stamp;
-   name->next = NULL;
+   
+   *name = (Name){value, time_stamp, NULL};
    return name;
 }
 
 // Check if value is in list
 bool contain_name(Name *name, int value, int time) {
-   while (true) {
-      if (name == NULL) {
-         return false;
-      }
-      else if (name->value == value && (time == -1 || name->time_stamp >= time)) {
+   while (name != NULL) {
+      if (name->value == value && (time == -1 || name->time_stamp >= time)) {
          return true;
       }
       else {
          name = name->next;
       }
    }
+   return false;
 }
 
 // Deconstructor

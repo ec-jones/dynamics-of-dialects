@@ -1,3 +1,6 @@
+// TODO: refactor set h, t in new network
+//       match_node
+
 #include <stdlib.h>
 #include <assert.h>
 #include "agent.h"
@@ -5,10 +8,10 @@
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
-// Network of agents
+// Undirected network of agents
 typedef struct {
-   Agent **adj_list;
    int n;
+   Agent **adj_list;
 } Network;
 
 // Generate float in range [0, 1)
@@ -23,9 +26,12 @@ float frand(void) {
 // Create a network of n isolated nodes
 Network *create_network(int n) {
    Network *network = malloc(sizeof(Network));
-   network->n = n;
+   assert(network != NULL);
 
-   network->adj_list = malloc(n * sizeof(Agent*));
+   Agent **adj_list = malloc(n * sizeof(Agent*));
+   assert(adj_list != NULL);
+
+   *network = (Network){n, adj_list};
    for (int i = 0; i < n; i++) {
       network->adj_list[i] = create_agent();
    }
@@ -46,6 +52,16 @@ bool contains_edge(Network *network, int i, int j) {
    return false;
 }
 
+// Extend node's adj list
+void extend(Agent *node) {
+   if (node->degree == node->capacity) {
+      node->capacity *= 2;
+      node->neighbours = realloc(node->neighbours, node->capacity * sizeof(Agent*));
+      assert(node->neighbours != NULL);
+   }
+   node->degree++;
+}
+
 // Insert undirect edge
 void edge_insert(Network *network, int i, int j) {
    // No self loops
@@ -58,26 +74,16 @@ void edge_insert(Network *network, int i, int j) {
    Agent *src  = network->adj_list[i],
          *dest = network->adj_list[j];
 
-   if (src->degree == src->capacity) {
-      src->capacity *= 2;
-      src->neighbours = realloc(src->neighbours, src->capacity * sizeof(Agent*));
-   }
-   src->degree++;
-   src->neighbours[src->degree - 1] = dest;
+   extend(src);
+   extend(dest);
 
-   if (dest->degree == dest->capacity) {
-      dest->capacity *= 2;
-      dest->neighbours = realloc(dest->neighbours, dest->capacity * sizeof(Agent*));
-   }
-   dest->degree++;
+   src->neighbours[src->degree - 1] = dest;
    dest->neighbours[dest->degree - 1] = src;
 }
 
 // Connect all nodes in a new network
 void make_complete(Network *network) {
    for (int i = 0; i < network->n; i++) {
-      network->adj_list[i]->h = 0;
-      network->adj_list[i]->t = 0;
       for (int j = i + 1; j < network->n; j++) {
          edge_insert(network, i, j);
       }
@@ -87,6 +93,7 @@ void make_complete(Network *network) {
 // Make new network linearly connected
 void make_linear(Network *network, float h, float t) {
    for (int i = 0; i < network->n; i++) {
+      // Assign environment
       if (h == 0 || h*t == 1) {
          network->adj_list[i]->h = 1;
          network->adj_list[i]->t = 1;
@@ -101,13 +108,15 @@ void make_linear(Network *network, float h, float t) {
             network->adj_list[i]->t = 1.0f - t;
          }
       }
+
+      // Add edges
       if (i < network->n - 1) {
          edge_insert(network, i, i + 1);
       }
    }
 }
 
-// Make two isolated populations
+// Make two isolated populations (naemcat = -2, -3)
 void make_isolate(Network *network, float h, float t) {
    for (int i = 0; i < network->n / 2; i++) {
       if (h == 0 || h*t == 1) {
@@ -145,7 +154,7 @@ void make_isolate(Network *network, float h, float t) {
    }
 }
 
-// Connect isolated populations
+// Connect isolated populations (namecat = -4)
 void reconnect(Network *network, float h, float t) {
    for (int i = 0; i < network->n; i++) {
       network->adj_list[i]->h = h;
@@ -174,8 +183,8 @@ void watts_strogatz(Network *network, float h, float t, int K, float beta) {
             network->adj_list[i]->t = 1.0f - t;
          }
       }
-      for (int k = 1; k <= K / 2; k++) {
-         int j = (i + k) % network->n;
+      for (int k = 0; k < K / 2; k++) {
+         int j = (i + 1 + k) % network->n;
          if (frand() <= beta) {
             j = frand() * network->n;
             while (j == i || contains_edge(network, i, j)) {
@@ -195,9 +204,9 @@ float scale(float top, float bottom, float h, float t) {
    if (bottom > t) {
       return ((1.0 - (h*t) / 1.0 - t)) * (top - bottom);
    }
-   else if (top > t && bottom <= t) {
-      float left = h * (t - bottom);
-      float right = ((1.0 - (h*t) / 1.0 - t)) * (top - t);
+   else if (top > t) {
+      float left  = h * (t - bottom),
+            right = ((1.0 - (h*t) / 1.0 - t)) * (top - t);
       return left + right;
    }
    else {
@@ -263,10 +272,19 @@ float match_node(Agent *node_x, Agent *node_y, float min, float max, bool env) {
 
 // Deep clone of the network
 Network *clone_network(Network *network) {
-   Network *new = create_network(network->n);
-   for (int i = 0; i < network->n; i++) {
+   int n = network->n;
+
+   Network *new = malloc(sizeof(Network));
+   assert(new != NULL);
+
+   Agent **adj_list = malloc(n * sizeof(Agent*));
+   assert(adj_list != NULL);
+
+   *new = (Network){n, adj_list};
+   for (int i = 0; i < n; i++) {
       new->adj_list[i] = clone_agent(network->adj_list[i]);
    }
+
    return new;
 }
 

@@ -18,16 +18,7 @@ Category *create_category(void) {
   Category *cat = (Category*)malloc(sizeof(Category));
   assert(cat != NULL);
 
-  cat->split = -1;
-  cat->head = NULL;
-  cat->tail = NULL;
-  cat->left = NULL;
-  cat->right = NULL;
-
-  cat->top = 1;
-  cat->next = NULL;
-  cat->prev = NULL;
-
+  *cat = (Category){-1.0, NULL, NULL, NULL, NULL, 1.0, NULL, NULL};
   return cat;
 }
 
@@ -187,16 +178,6 @@ int lingcat_categories(Category *cat) {
    return acc;
 }
 
-// Deconstructor
-void delete_category(Category *cat) {
-  if (cat != NULL) {
-    delete_category(cat->left);
-    delete_category(cat->right);
-    delete_name(cat->head);
-    free(cat);
-  }
-}
-
 // Clone leaves
 Category *clone_tree(Category *cat) {
   if (cat == NULL) {
@@ -209,4 +190,14 @@ Category *clone_tree(Category *cat) {
   new->next = clone_tree(cat->next);
   new->top = cat->top;
   return new;
+}
+
+// Deconstructor
+void delete_category(Category *cat) {
+  if (cat != NULL) {
+    delete_category(cat->left);
+    delete_category(cat->right);
+    delete_name(cat->head);
+    free(cat);
+  }
 }
