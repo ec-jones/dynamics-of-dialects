@@ -209,7 +209,7 @@ void write(unsigned long long int t) {
       mode = mode & ~MATCH_WINDOW;
       const float width = 0.1;
       for (float bottom = 0; bottom <= 2.0; bottom += 0.1) {
-         if (bottom + width >= 1.0) {
+         if (bottom + width > 1.0) {
             break;
          }
          float acc = 0;
@@ -332,7 +332,7 @@ int main(int argc, char **argv) {
    srand((unsigned) time(&t));
    clock_t begin = clock();
 
-   open("contact2");
+   open("contact1");
    network = create_network(N);
    make_isolate(network, 0, 0);
 

@@ -6,7 +6,7 @@ typedef struct _node {
 	int degree, capacity, time_stamp;
 
    float h, t; //High pdf and Transition
-   int namecat;
+   int name_mod;
 } Agent;
 
 Agent *create_agent(void);

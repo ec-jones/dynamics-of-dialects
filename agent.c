@@ -10,7 +10,7 @@ typedef struct _node {
    int degree, capacity, time_stamp;
 
    float h, t; //High pdf and Transition
-   int namecat;
+   int name_mod;
 } Agent;
 
 // Create a new (isolated) agent with uniform distribution
@@ -35,8 +35,8 @@ void split(Agent *agent, float x, float y) {
    while (cat != NULL) {
       if (cat->split == -1) {
          inner_split(cat, x, y);
-         push(cat->left, agent->namecat, agent->time_stamp);
-         push(cat->right, agent->namecat, agent->time_stamp);
+         push(cat->left, agent->name_mod, agent->time_stamp);
+         push(cat->right, agent->name_mod, agent->time_stamp);
          split_count++;
          return;
       }
@@ -56,27 +56,25 @@ void split(Agent *agent, float x, float y) {
 void negotiate(Agent *spk, Agent *lst, float x, float y, int time) {
    split(spk, x, y);
 
-   Category *spkx = get_category(spk->tree, x);
+   Category *spkx = get_category(spk->tree, x),
+            *lstx = get_category(lst->tree, x),
+            *lsty = get_category(lst->tree, y);
+
+
    spkx->head->time_stamp = spk->time_stamp;
-
    int mrn = peek(spkx);
-
-   Category *lstx = get_category(lst->tree, x);
-   Category *lsty = get_category(lst->tree, y);
 
    bool succ;
    if (time == -1) {
       succ = contain_name(lstx->head, mrn, -1)
-      && (!contain_name(lsty->head, mrn, -1));
+         && (!contain_name(lsty->head, mrn, -1));
    }
-   else {
-      // forgetting
+   else { // Forgetting
       succ = contain_name(lstx->head, mrn, lst->time_stamp - time)
-      && (!contain_name(lsty->head, mrn, lst->time_stamp - time));
+         && (!contain_name(lsty->head, mrn, lst->time_stamp - time));
    }
 
-   if (succ) {
-      // Success
+   if (succ) { // Success
       delete_name(spkx->head->next);
       spkx->head->next = NULL;
       spkx->tail = spkx->head;
@@ -86,8 +84,7 @@ void negotiate(Agent *spk, Agent *lst, float x, float y, int time) {
       lstx->tail = NULL;
       push(lstx, mrn, lst->time_stamp);
    }
-   else {
-      // Failure
+   else { // Failure
       enqueue(lstx, mrn, lst->time_stamp);
    }
 
@@ -95,13 +92,13 @@ void negotiate(Agent *spk, Agent *lst, float x, float y, int time) {
    lst->time_stamp++;
 }
 
-   // Clone agent's tree, h, t & namecat
+   // Clone agent's tree, h, t & name_mod
 Agent *clone_agent(Agent *agent) {
    Agent *new = create_agent();
    new->tree = clone_tree(agent->tree);
    new->h = agent->h;
    new->t = agent->t;
-   new->namecat = agent->namecat;
+   new->name_mod = agent->name_mod;
    return new;
 }
 

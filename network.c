@@ -1,5 +1,4 @@
-// TODO: refactor set h, t in new network
-//       match_node
+// TODO: match_node logic
 
 #include <stdlib.h>
 #include <assert.h>
@@ -61,8 +60,7 @@ void extend(Agent *node) {
 
 // Insert undirect edge
 void edge_insert(Network *network, int i, int j) {
-   // No self loops
-   assert(i != j);
+   assert(i != j); // No self loops
 
    if (contains_edge(network, i, j)) {
       return;
@@ -87,26 +85,36 @@ void make_complete(Network *network) {
    }
 }
 
+// Assign environment to agent i, mod if different name categories
+void assign_environment(Network *network, int i, float h, float t, bool mod) {
+   if (h == 0 || h*t == 1) {
+      network->adj_list[i]->h = 1;
+      network->adj_list[i]->t = 1;
+   }
+   else {
+      if (i < network->n / 2) {
+         network->adj_list[i]->h = h;
+         network->adj_list[i]->t = t;
+      }
+      else {
+         network->adj_list[i]->h = (1.0f - h*t) / (1.0f - t);
+         network->adj_list[i]->t = 1.0f - t;
+      }
+   }
+   if (mod) {
+      if (i < network->n / 2) {
+         network->adj_list[i]->name_mod = -2;
+      }
+      else {
+         network->adj_list[i]->name_mod = -3;
+      }
+   }
+}
+
 // Make new network linearly connected
 void make_linear(Network *network, float h, float t) {
    for (int i = 0; i < network->n; i++) {
-      // Assign environment
-      if (h == 0 || h*t == 1) {
-         network->adj_list[i]->h = 1;
-         network->adj_list[i]->t = 1;
-      }
-      else {
-         if (i < network->n / 2) {
-            network->adj_list[i]->h = h;
-            network->adj_list[i]->t = t;
-         }
-         else {
-            network->adj_list[i]->h = (1.0f - h*t) / (1.0f - t);
-            network->adj_list[i]->t = 1.0f - t;
-         }
-      }
-
-      // Add edges
+      assign_environment(network, i, h, t, false);
       if (i < network->n - 1) {
          edge_insert(network, i, i + 1);
       }
@@ -116,15 +124,7 @@ void make_linear(Network *network, float h, float t) {
 // Make two isolated populations (naemcat = -2, -3)
 void make_isolate(Network *network, float h, float t) {
    for (int i = 0; i < network->n / 2; i++) {
-      if (h == 0 || h*t == 1) {
-         network->adj_list[i]->h = 1;
-         network->adj_list[i]->t = 1;
-      }
-      else {
-         network->adj_list[i]->h = h;
-         network->adj_list[i]->t = t;
-      }
-      network->adj_list[i]->namecat = -2;
+      assign_environment(network, i, h, t, true);
       for (int j = 0; j < network->n / 2; j++) {
          if (i == j) {
             continue;
@@ -133,15 +133,7 @@ void make_isolate(Network *network, float h, float t) {
       }
    }
    for (int i = network->n / 2; i < network->n; i++) {
-      if (h == 0 || h*t == 1) {
-         network->adj_list[i]->h = 1;
-         network->adj_list[i]->t = 1;
-      }
-      else {
-         network->adj_list[i]->h = (1.0f - h*t) / (1.0f - t);
-         network->adj_list[i]->t = 1.0f - t;
-      }
-      network->adj_list[i]->namecat = -3;
+      assign_environment(network, i, h, t, true);
       for (int j = network->n / 2; j < network->n; j++) {
          if (i == j) {
             continue;
@@ -151,36 +143,22 @@ void make_isolate(Network *network, float h, float t) {
    }
 }
 
-// Connect isolated populations (namecat = -4)
+// Connect isolated populations (name_mod = -4)
 void reconnect(Network *network, float h, float t) {
    for (int i = 0; i < network->n; i++) {
       network->adj_list[i]->h = h;
       network->adj_list[i]->t = t;
-      network->adj_list[i]->namecat = -3;
+      network->adj_list[i]->name_mod = -4;
       for (int j = i + 1; j < network->n; j++) {
          edge_insert(network, i, j);
       }
-      printf("Agent: %d, Deg: %d", i, network->adj_list[i]->degree);
    }
 }
 
 // Make new network into a small-world network using the Watts–Strogatz model
 void watts_strogatz(Network *network, float h, float t, int K, float beta) {
    for (int i = 0; i < network->n; i++) {
-      if (h == 0 || h*t == 1) {
-         network->adj_list[i]->h = 1;
-         network->adj_list[i]->t = 1;
-      }
-      else {
-         if (i < network->n / 2) {
-            network->adj_list[i]->h = h;
-            network->adj_list[i]->t = t;
-         }
-         else {
-            network->adj_list[i]->h = (1.0f - h*t) / (1.0f - t);
-            network->adj_list[i]->t = 1.0f - t;
-         }
-      }
+      assign_environment(network, i, h, t, false);
       for (int k = 0; k < K / 2; k++) {
          int j = (i + 1 + k) % network->n;
          if (frand() <= beta) {
