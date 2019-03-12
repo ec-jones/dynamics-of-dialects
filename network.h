@@ -2,13 +2,14 @@
 
 typedef struct {
    int n;
-   Agent **adj_list;
+   Agent **nodes;
+   float **weights;
 } Network;
 
 float frand(void);
 
 Network *create_network(int n);
-void make_complete(Network *network);
+void make_complete(Network *network, float p);
 void make_linear(Network *network, float h, float t);
 void make_isolate(Network *network, float h, float t);
 void reconnect(Network *network, float h, float t);

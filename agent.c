@@ -6,11 +6,10 @@
 
 typedef struct _node {
    Category *tree;
-   struct _node **neighbours;
-   int degree, capacity, time_stamp;
+   int time_stamp;
 
    float h, t; //High pdf and Transition
-   int name_mod;
+   int name_mod; // See create_name
 } Agent;
 
 // Create a new (isolated) agent with uniform distribution
@@ -18,10 +17,7 @@ Agent *create_agent(void) {
    Agent *new = malloc(sizeof(Agent));
    assert(new != NULL);
 
-   Agent **neighbours = malloc(4 * sizeof(Agent*));
-   assert(neighbours != NULL);
-
-   *new = (Agent){create_category(), neighbours, 0, 4, 0, 0.0, 0.0, -1};
+   *new = (Agent){create_category(), 0, 0.0, 0.0, -1};
    return new;
 }
 
@@ -53,7 +49,7 @@ void split(Agent *agent, float x, float y) {
 }
 
 // Main negationation loop
-void negotiate(Agent *spk, Agent *lst, float x, float y, int time) {
+bool negotiate(Agent *spk, Agent *lst, float x, float y, int time) {
    split(spk, x, y);
 
    Category *spkx = get_category(spk->tree, x),
@@ -90,15 +86,14 @@ void negotiate(Agent *spk, Agent *lst, float x, float y, int time) {
 
    spk->time_stamp++;
    lst->time_stamp++;
+
+   return succ;
 }
 
-   // Clone agent's tree, h, t & name_mod
+// Clone agent
 Agent *clone_agent(Agent *agent) {
    Agent *new = create_agent();
-   new->tree = clone_tree(agent->tree);
-   new->h = agent->h;
-   new->t = agent->t;
-   new->name_mod = agent->name_mod;
+   *new = (Agent){clone_tree(agent->tree), agent->time_stamp, agent->h, agent->t, agent->name_mod};
    return new;
 }
 
@@ -107,9 +102,6 @@ void delete_agent(Agent *agent) {
    if (agent != NULL) {
       delete_category(agent->tree);
       agent->tree = NULL;
-
-      free(agent->neighbours);
-      agent->neighbours = NULL;
 
       free(agent);
       agent = NULL;
