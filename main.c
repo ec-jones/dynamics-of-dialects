@@ -19,53 +19,53 @@ MODE mode = LINGCAT | LOCAL_MATCH_ENV | MATCH_ENV | SPLIT_POP;
 FILE *p = NULL, *m = NULL, *l = NULL, *b = NULL, *lm = NULL, *me = NULL, *lme = NULL, *mw = NULL, *s = NULL;
 
 // Open files
-void open(char *out) {
+void open(char *out, int r) {
    char buf[100];
-   sprintf(buf, "./data/%s", out);
+   sprintf(buf, "./data/%s%d", out, r);
    mkdir("./data/", 0777);
    mkdir(buf, 0777);
    if (mode & PERCAT) {
-      sprintf(buf, "./data/%s/percat.dat", out);
+      sprintf(buf, "./data/%s%d/percat.dat", out, r);
       p = fopen(buf, "w");
       assert(p != NULL);
    }
    if (mode & LINGCAT) {
-      sprintf(buf, "./data/%s/lingcat.dat", out);
+      sprintf(buf, "./data/%s%d/lingcat.dat", out, r);
       l = fopen(buf, "w");
       assert(l != NULL);
    }
    if (mode & MATCH) {
-      sprintf(buf, "./data/%s/match.dat", out);
+      sprintf(buf, "./data/%s%d/match.dat", out, r);
       m = fopen(buf, "w");
       assert(m != NULL);
    }
    if (mode & BOUNDS) {
-      sprintf(buf, "./data/%s/bounds.dat", out);
+      sprintf(buf, "./data/%s%d/bounds.dat", out, r);
       b = fopen(buf, "w");
       assert(b != NULL);
    }
    if (mode & LOCAL_MATCH) {
-      sprintf(buf, "./data/%s/local_match.dat", out);
+      sprintf(buf, "./data/%s%d/local_match.dat", out, r);
       lm = fopen(buf, "w");
       assert(lm != NULL);
    }
    if (mode & LOCAL_MATCH_ENV) {
-      sprintf(buf, "./data/%s/local_match_env.dat", out);
+      sprintf(buf, "./data/%s%d/local_match_env.dat", out, r);
       lme = fopen(buf, "w");
       assert(lme != NULL);
    }
    if (mode & MATCH_ENV) {
-      sprintf(buf, "./data/%s/match_env.dat", out);
+      sprintf(buf, "./data/%s%d/match_env.dat", out, r);
       me = fopen(buf, "w");
       assert(me != NULL);
    }
    if (mode & MATCH_WINDOW) {
-      sprintf(buf, "./data/%s/match_window.dat", out);
+      sprintf(buf, "./data/%s%d/match_window.dat", out, r);
       mw = fopen(buf, "w");
       assert(mw != NULL);
    }
    if (mode & SPLIT_POP) {
-      sprintf(buf, "./data/%s/split.dat", out);
+      sprintf(buf, "./data/%s%d/split.dat", out, r);
       s = fopen(buf, "w");
       assert(s != NULL);
    }
@@ -209,7 +209,7 @@ void write(unsigned long long int t) {
       mode = mode & ~MATCH_WINDOW;
       const float width = 0.1;
       for (float bottom = 0; bottom <= 2.0; bottom += 0.1) {
-         if (bottom + width > 1.0) {
+         if (bottom + width >= 1.1) {
             break;
          }
          float acc = 0;
@@ -231,12 +231,12 @@ void get_stimuli(float *a, float *b, float h, float t) {
       *b = frand();
    }
 
-   if (h != 0 && h*t != 1) {
+   if (h*t != 0.0 && h*t != 1.0) {
       if (*a <= h * t) {
          *a /= h;
       } else {
          *a -= h * t;
-         *a *= (1 - t) / (1 - (h*t));
+         *a *= (1.0 - t) / (1.0 - (h*t));
          *a += t;
       }
 
@@ -244,7 +244,7 @@ void get_stimuli(float *a, float *b, float h, float t) {
          *b /= h;
       } else {
          *b -= h * t;
-         *b *= (1 - t) / (1 - (h*t));
+         *b *= (1.0 - t) / (1.0 - (h*t));
          *b += t;
       }
    }
@@ -332,51 +332,53 @@ int main(int argc, char **argv) {
    srand((unsigned) time(&t));
    clock_t begin = clock();
 
-   open("contact1");
-   network = create_network(N);
-   make_isolate(network, 0, 0);
+   for (int r = 0; r < 10; r++) {
+      open("contact_env", r);
+      network = create_network(N);
+      make_isolate(network, 4.0, 0.2);
 
-   long double step = 100.0l;
-   for (unsigned long long int i = 0; i < T; i++) {
-      Agent *spk, *lst;
-      get_agents(&spk, &lst, network);
+      long double step = 100.0l;
+      for (unsigned long long int i = 0; i < T; i++) {
+         Agent *spk, *lst;
+         get_agents(&spk, &lst, network);
 
-      float a, b;
-      get_stimuli(&a, &b, spk->h, spk->t);
+         float a, b;
+         get_stimuli(&a, &b, spk->h, spk->t);
 
-      negotiate(spk, lst, a, b, -1);
-      if (i >= step) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
-         step *= 1.1;
-         printf("Running: %llu, %Lf%%\n", i, (long double)i / (long double)T * 100.0l);
-         write(i);
+         negotiate(spk, lst, a, b, -1);
+         if (i >= step) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+            step *= 1.1;
+            printf("Running: %llu, %Lf%%\n", i, (long double)i / (long double)T * 100.0l);
+            write(i);
+         }
       }
-   }
 
-   names();
-   save = clone_network(network);
-   reconnect(network, 0, 0);
-   step = 100.0l;
+      names();
+      save = clone_network(network);
+      reconnect(network, 0, 0);
+      step = 100.0l;
 
-   for (unsigned long long int i = 0; i < T; i++) {
-      Agent *spk, *lst;
-      get_agents(&spk, &lst, network);
+      for (unsigned long long int i = 0; i < T; i++) {
+         Agent *spk, *lst;
+         get_agents(&spk, &lst, network);
 
-      float a, b;
-      get_stimuli(&a, &b, spk->h, spk->t);
+         float a, b;
+         get_stimuli(&a, &b, spk->h, spk->t);
 
-      negotiate(spk, lst, a, b, -1);
-      if (i >= step) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
-         step *= 1.1;
-         printf("Running: %llu, %Lf%%\n", i, (long double)i / (long double)T * 100.0l);
-         write(i);
+         negotiate(spk, lst, a, b, -1);
+         if (i >= step) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+            step *= 1.1;
+            printf("Running: %llu, %Lf%%\n", i, (long double)i / (long double)T * 100.0l);
+            write(i);
+         }
       }
+
+      compare();
+
+      delete_network(network);
+      delete_network(save);
+      close();
    }
-
-   compare();
-
-   delete_network(network);
-   delete_network(save);
-   close();
 
    clock_t end = clock();
    double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;

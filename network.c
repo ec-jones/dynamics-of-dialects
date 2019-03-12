@@ -1,4 +1,4 @@
-// TODO: match_node logic
+// TODO: update match_node logic
 
 #include <stdlib.h>
 #include <assert.h>
@@ -174,7 +174,7 @@ void watts_strogatz(Network *network, float h, float t, int K, float beta) {
 
 // Helper function for match_agent
 float scale(float top, float bottom, float h, float t) {
-   if (h == 0 || h*t == 1) {
+   if (h*t == 1 || h*t == 0) {
       return top - bottom;
    }
    if (bottom > t) {
