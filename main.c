@@ -159,7 +159,7 @@ void write(unsigned long long int t) {
       float acc = 0;
       for (int i = 0; i < N; i++) {
          for (int j = i + 1; j < N; j++) {
-            acc += match_node(network->nodes[i], network->nodes[j], 0, 1, false);
+            acc += overlap(network->nodes[i], network->nodes[j], 0, 1, false);
          }
       }
       fprintf(m, "%lld %f\n", t, 2.0f * acc / (N * (N - 1)));
@@ -180,7 +180,7 @@ void write(unsigned long long int t) {
       float acc = 0;
       for (int i = 0; i < N; i++) {
          for (int j = i + 1; j < N; j++) {
-            acc += match_node(network->nodes[i], network->nodes[j], 0, 1, true);
+            acc += overlap(network->nodes[i], network->nodes[j], 0, 1, true);
          }
       }
       fprintf(me, "%lld %f\n", t, 2.0f * acc / (N * (N - 1)));
@@ -215,7 +215,7 @@ void write(unsigned long long int t) {
          float acc = 0;
          for (int i = 0; i < N; i++) {
             for (int j = i + 1; j < N; j++) {
-               acc += match_node(network->nodes[i], network->nodes[j], bottom, bottom + width, false);
+               acc += overlap(network->nodes[i], network->nodes[j], bottom, bottom + width, false);
             }
          }
          fprintf(mw, "%f %f\n", bottom + (width / 2.0), 2.0f * acc / (N * (N - 1)));
@@ -253,7 +253,7 @@ void get_stimuli(float *a, float *b, float h, float t) {
 // Dump network
 void dump_network(Network *network, int T) {
    char buf[100];
-   sprintf(buf, "./data/communities3/dump_%d.dat", T);
+   sprintf(buf, "./data/communities_rand/dump_%d.dat", T);
    FILE *n = fopen(buf, "w");
    assert(n != NULL);
 
@@ -352,7 +352,7 @@ int main(int argc, char **argv) {
    srand((unsigned) time(&t));
    clock_t begin = clock();
 
-   open("communities3");
+   open("communities_rand");
    network = create_network(N);
    make_complete(network, 0.5);
 

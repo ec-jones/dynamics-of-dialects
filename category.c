@@ -99,14 +99,14 @@ void inner_split(Category *cat, float x, float y) {
 }
 
 // Clone leaves
-Category *clone_tree(Category *cat) {
+Category *clone_leaves(Category *cat) {
    if (cat == NULL) {
       return NULL;
    }
    cat = left_most(cat);
    Category *new = create_category();
    new->head = clone_name(cat->head, &new->tail);
-   new->next = clone_tree(cat->next);
+   new->next = clone_leaves(cat->next);
    new->top = cat->top;
    return new;
 }

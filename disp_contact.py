@@ -7,10 +7,10 @@ lingcat = []
 local_match_env = []
 match_env = []
 for dir in os.listdir('data'):
-	if re.match(r'contact[0-9]', dir):
-		lingcat.append(np.loadtxt('data/' + dir + '/lingcat.dat', delimiter=' '))
-		local_match_env.append(np.loadtxt('data/' + dir + '/local_match_env.dat', delimiter=' '))
-		match_env.append(np.loadtxt('data/' + dir + '/match_env.dat', delimiter=' '))
+   if re.match(r'contact[0-9]', dir):
+      lingcat.append(np.loadtxt('data/' + dir + '/lingcat.dat', delimiter=' '))
+      local_match_env.append(np.loadtxt('data/' + dir + '/local_match_env.dat', delimiter=' '))
+      match_env.append(np.loadtxt('data/' + dir + '/match_env.dat', delimiter=' '))
 
 lingcat_mean = np.mean(lingcat, axis = 0)
 xs1 = lingcat_mean[0:len(lingcat_mean) / 2,0]

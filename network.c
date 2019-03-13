@@ -1,11 +1,6 @@
-// TODO: update match_node logic
-
 #include <stdlib.h>
 #include <assert.h>
 #include "agent.h"
-
-#define MAX(x, y) (((x) > (y)) ? (x) : (y))
-#define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
 // Undirected network of agents
 typedef struct {
@@ -153,81 +148,8 @@ void watts_strogatz(Network *network, float h, float t, int K, float beta) {
    }
 }
 
-// Helper function for match_agent
-float scale(float top, float bottom, float h, float t) {
-   if (h*t == 1 || h*t == 0) {
-      return top - bottom;
-   }
-   if (bottom > t) {
-      return ((1.0 - (h*t) / 1.0 - t)) * (top - bottom);
-   }
-   else if (top > t) {
-      float left  = h * (t - bottom),
-            right = ((1.0 - (h*t) / 1.0 - t)) * (top - t);
-      return left + right;
-   }
-   else {
-      return h * (top - bottom);
-   }
-}
-
-// Measure how much of the perceptual space (within a window) the agents agree on
-float match_node(Agent *node_x, Agent *node_y, float min, float max, bool env) {
-   Category *x = left_most(node_x->tree);
-   Category *y = left_most(node_y->tree);
-
-   float acc = 0, bottom = 0, high = 0, low = 0;
-   while (x != NULL && y != NULL && bottom <= max) {
-      if (x->top < y->top) {
-         if (x->top < min) {
-            bottom = x->top;
-            x = x->next;
-         }
-         else {
-            high = MIN(max, x->top), low = MAX(min, bottom);
-            if (x->head != NULL && y->head != NULL && peek(x) == peek(y)) {
-               if (env) {
-                  float acc_x = scale(high, low, node_x->h, node_x->t);
-                  float acc_y = scale(high, low, node_y->h, node_y->t);
-                  acc += (acc_x + acc_y) / 2;
-               }
-               else {
-                  acc += high - low;
-               }
-            }
-            bottom = high;
-            x = x->next;
-         }
-      }
-      else {
-         if (y->top < min) {
-            bottom = y->top;
-            y = y->next;
-         }
-         else {
-            high = MIN(max, y->top), low = MAX(min, bottom);
-            if (x->head != NULL && y->head != NULL && peek(x) == peek(y)) {
-               if (env) {
-                  float acc_x = scale(high, low, node_x->h, node_x->t);
-                  float acc_y = scale(high, low, node_y->h, node_y->t);
-                  acc += (acc_x + acc_y) / 2;
-               }
-               else {
-                  acc += high - low;
-               }
-            }
-            bottom = high;
-            y = y->next;
-         }
-      }
-   }
-   float width_x = scale(max, min, node_x->h, node_x->t);
-   float width_y = scale(max, min, node_y->h, node_y->t);
-   float width = env ? (width_x + width_y) / 2 : (max - min);
-   return acc / width;
-}
-
-// Deep clone of the network
+// Clones a network with only agent's leaves
+// Used to compare to past versions
 Network *clone_network(Network *network) {
    int n = network->n;
 

@@ -4,6 +4,9 @@
 #include <assert.h>
 #include "category.h"
 
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+
 typedef struct _node {
    Category *tree;
    int time_stamp;
@@ -12,7 +15,7 @@ typedef struct _node {
    int name_mod; // See create_name
 } Agent;
 
-// Create a new (isolated) agent with uniform distribution
+// Create a new agent with uniform distribution
 Agent *create_agent(void) {
    Agent *new = malloc(sizeof(Agent));
    assert(new != NULL);
@@ -21,11 +24,8 @@ Agent *create_agent(void) {
    return new;
 }
 
-// Count the number of splits in the population
+// Split agent if x and y overlap, if so add new name to x's category
 int split_count = 0;
-
-// Split agent if x and y overlap
-// if so add new name (-1) to x's new agent
 void split(Agent *agent, float x, float y) {
    Category *cat = agent->tree;
    while (cat != NULL) {
@@ -48,7 +48,7 @@ void split(Agent *agent, float x, float y) {
    }
 }
 
-// Main negationation loop
+// Main negationation loop, time is forgetting distance
 bool negotiate(Agent *spk, Agent *lst, float x, float y, int time) {
    split(spk, x, y);
 
@@ -90,10 +90,58 @@ bool negotiate(Agent *spk, Agent *lst, float x, float y, int time) {
    return succ;
 }
 
-// Clone agent
+// Helper function for match_agent
+float scale(float top, float bottom, float h, float t) {
+   if (h*t == 1 || h*t == 0) {
+      return top - bottom;
+   }
+   if (bottom > t) {
+      return ((1.0 - (h*t) / 1.0 - t)) * (top - bottom);
+   }
+   else if (top > t) {
+      float left  = h * (t - bottom),
+            right = ((1.0 - (h*t) / 1.0 - t)) * (top - t);
+      return left + right;
+   }
+   else {
+      return h * (top - bottom);
+   }
+}
+
+// Mesure how much of the perceptual space (within a window) the agents agree op
+// If env weight the result by the average distribution
+float overlap(Agent *agent_x, Agent *agent_y, float min, float max, bool env) {
+   Category *x = left_most(agent_x->tree),
+            *y = left_most(agent_y->tree);
+
+   float acc = 0, last_top = 0;
+   while (x != NULL && y != NULL && last_top < max) {
+      Category **smaller = x->top < y->top ? &x : &y;
+
+      float high = MIN(max, (*smaller)->top), low = MAX(min, last_top);
+      if (x->head != NULL && y->head != NULL && peek(x) == peek(y)) {
+         if (env) {
+            float acc_x = scale(high, low, agent_x->h, agent_x->t),
+                  acc_y = scale(high, low, agent_y->h, agent_y->t);
+            acc += (acc_x + acc_y) / 2;
+         }
+         else {
+            acc += high - low;
+         }
+      }
+      last_top = high;
+      *smaller = (*smaller)->next;
+   }
+   float width_x = scale(max, min, agent_x->h, agent_x->t),
+         width_y = scale(max, min, agent_y->h, agent_y->t),
+         width = env ? (width_x + width_y) / 2 : (max - min);
+   return acc / width;
+}
+
+// Clone agent with only its leaves
 Agent *clone_agent(Agent *agent) {
    Agent *new = create_agent();
-   *new = (Agent){clone_tree(agent->tree), agent->time_stamp, agent->h, agent->t, agent->name_mod};
+   *new = (Agent){clone_leaves(agent->tree), agent->time_stamp, agent->h, agent->t, agent->name_mod};
    return new;
 }
 
