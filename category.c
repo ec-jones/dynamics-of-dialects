@@ -98,6 +98,24 @@ void inner_split(Category *cat, float x, float y) {
    cat->right->head = clone_name(cat->head, &cat->right->tail);
 }
 
+// The number of linguistic categories in a tree
+int lingcat_categories(Category *cat) {
+   cat = left_most(cat);
+
+   int acc = 1;
+   while(cat != NULL) {
+
+      if (cat->next == NULL ||
+          cat->next->head == NULL ||
+          (cat->head != NULL && peek(cat) != peek(cat->next))) {
+         acc++;
+      }
+
+      cat = cat->next;
+   }
+   return acc;
+}
+
 // Clone leaves
 Category *clone_leaves(Category *cat) {
    if (cat == NULL) {

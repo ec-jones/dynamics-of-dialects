@@ -9,10 +9,8 @@
 
 typedef struct _node {
    Category *tree;
-   int time_stamp;
-
-   float h, t; //High pdf and Transition
-   int name_mod; // See create_name
+   float h, t;
+   int name_mod, time_stamp;
 } Agent;
 
 // Create a new agent with uniform distribution
@@ -20,21 +18,19 @@ Agent *create_agent(void) {
    Agent *new = malloc(sizeof(Agent));
    assert(new != NULL);
 
-   *new = (Agent){create_category(), 0, 0.0, 0.0, -1};
+   *new = (Agent){create_category(), 0.0, 0.0, -1, 0};
    return new;
 }
 
 // Split agent if x and y overlap, if so add new name to x's category
-int split_count = 0;
-void split(Agent *agent, float x, float y) {
+bool split(Agent *agent, float x, float y) {
    Category *cat = agent->tree;
    while (cat != NULL) {
       if (cat->split == -1) {
          inner_split(cat, x, y);
          push(cat->left, agent->name_mod, agent->time_stamp);
          push(cat->right, agent->name_mod, agent->time_stamp);
-         split_count++;
-         return;
+         return true;
       }
       else if (x < cat->split && y < cat->split) {
          cat = cat->left;
@@ -43,14 +39,17 @@ void split(Agent *agent, float x, float y) {
          cat = cat->right;
       }
       else {
-         return;
+         break;
       }
    }
+   return false;
 }
 
 // Main negationation loop, time is forgetting distance
-bool negotiate(Agent *spk, Agent *lst, float x, float y, int time) {
-   split(spk, x, y);
+bool negotiate(Agent *spk, Agent *lst, float x, float y, int time, int *split_count) {
+   if (split(spk, x, y)) {
+      ++*split_count;
+   }
 
    Category *spkx = get_category(spk->tree, x),
             *lstx = get_category(lst->tree, x),
@@ -141,7 +140,7 @@ float overlap(Agent *agent_x, Agent *agent_y, float min, float max, bool env) {
 // Clone agent with only its leaves
 Agent *clone_agent(Agent *agent) {
    Agent *new = create_agent();
-   *new = (Agent){clone_leaves(agent->tree), agent->time_stamp, agent->h, agent->t, agent->name_mod};
+   *new = (Agent){clone_leaves(agent->tree), agent->h, agent->t, agent->name_mod, agent->time_stamp, };
    return new;
 }
 

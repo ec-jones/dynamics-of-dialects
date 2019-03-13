@@ -17,5 +17,6 @@ void enqueue(Category *cat, int value, int time_stamp);
 Category *get_category(Category *cat, float x);
 Category *left_most(Category *cat);
 void inner_split(Category *cat, float x, float y);
+int lingcat_categories(Category *cat);
 Category *clone_leaves(Category *cat);
 void delete_category(Category *cat);

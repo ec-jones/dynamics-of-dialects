@@ -1,5 +1,8 @@
+// TODO: parameterise update functions
+
 #include <stdlib.h>
 #include <assert.h>
+#include <math.h>
 #include "agent.h"
 
 // Undirected network of agents
@@ -7,16 +10,12 @@ typedef struct {
    int n;
    Agent **nodes;
    float **weights;
+   float dmin;
+   int split_count;
 } Network;
 
-// Generate float in range [0, 1)
-float frand(void) {
-   float f = ((float)rand()) / (((float)(RAND_MAX)) + 1.0);
-   return f >= 1.0 ? 0.0 : f;
-}
-
 // Create a network of n isolated nodes
-Network *create_network(int n) {
+Network *create_network(int n, float dmin) {
    Network *network = malloc(sizeof(Network));
    assert(network != NULL);
 
@@ -36,7 +35,7 @@ Network *create_network(int n) {
       }
    }
 
-   *network = (Network){n, nodes, weights};
+   *network = (Network){n, nodes, weights, dmin, 0};
    return network;
 }
 
@@ -97,21 +96,14 @@ void make_linear(Network *network, float h, float t) {
    }
 }
 
-// Make two isolated populations (naemcat = -2, -3)
+// Make two isolated populations (name_mod = -2, -3)
 void make_isolate(Network *network, float h, float t) {
-   for (int i = 0; i < network->n / 2; i++) {
+   for (int i = 0; i < network->n; i++) {
       assign_environment(network, i, h, t, true);
-      for (int j = 0; j < network->n / 2; j++) {
-         if (i == j) {
-            continue;
-         }
-         edge_insert(network, i, j, 1.0);
-      }
-   }
-   for (int i = network->n / 2; i < network->n; i++) {
-      assign_environment(network, i, h, t, true);
-      for (int j = network->n / 2; j < network->n; j++) {
-         if (i == j) {
+      for (int j = 0; j < network->n; j++) {
+         if ((i <  network->n / 2  && j >= network->n / 2) ||
+             (i >= network->n / 2  && j <  network->n / 2) ||
+             (i == j)) {
             continue;
          }
          edge_insert(network, i, j, 1.0);
@@ -131,6 +123,12 @@ void reconnect(Network *network, float h, float t) {
    }
 }
 
+// Generate float in range [0, 1)
+float frand(void) {
+   float f = ((float)rand()) / (((float)(RAND_MAX)) + 1.0);
+   return f >= 1.0 ? 0.0 : f;
+}
+
 // Make new network into a small-world network using the Watts–Strogatz model
 void watts_strogatz(Network *network, float h, float t, int K, float beta) {
    for (int i = 0; i < network->n; i++) {
@@ -144,6 +142,62 @@ void watts_strogatz(Network *network, float h, float t, int K, float beta) {
             }
          }
          edge_insert(network, i, j, 1.0);
+      }
+   }
+}
+
+// Sample from (h, t)-dist with inverse cummulative
+float resample(float x, float h, float t) {
+   if (h*t != 0.0 && h*t != 1.0) {
+      if (x <= h * t) {
+         x /= h;
+      } else {
+         x -= h * t;
+         x *= (1.0 - t) / (1.0 - (h*t));
+         x += t;
+      }
+   }
+   return x;
+}
+
+// Make one communication and optionally update weights, if rand the outcome of the communication is random
+void step(Network *network, bool update_weight, bool rand) {
+   int N = network->n;
+
+   int n = frand() * N; 
+   Agent *spk = network->nodes[n];
+
+   float cum[N]; // cummulative weights
+   cum[0] = network->weights[n][0];
+   for (int i = 1; i < N; i++) {
+      cum[i] = cum[i - 1] + network->weights[n][i];
+   }
+
+   float p = frand() * cum[N - 1];
+
+   int m = 0;
+   while (m < network->n && p > cum[m]) {
+      m++;
+   }
+   Agent *lst = network->nodes[m];
+
+   // generate uniform stimuli
+   float a = frand(), b = frand();
+   while (fabs(a - b) <= network->dmin) {
+      b = frand();
+   }
+   a = resample(a, spk->h, spk->t);
+   b = resample(b, spk->h, spk->t);
+
+   bool succ = rand ? frand() > 0.5 : negotiate(spk, lst, a, b, -1, &network->split_count);
+   if (update_weight) {
+      if (succ) {
+         network->weights[n][m] = pow(network->weights[n][m], 0.5);
+         network->weights[m][n] = pow(network->weights[m][n], 0.5);
+      }
+      else {
+         network->weights[n][m] = pow(network->weights[n][m], 1.5);
+         network->weights[m][n] = pow(network->weights[m][n], 1.5);
       }
    }
 }
@@ -172,7 +226,7 @@ Network *clone_network(Network *network) {
    Network *new = malloc(sizeof(Network));
    assert(new != NULL);
 
-   *new = (Network){n, nodes, weights};
+   *new = (Network){n, nodes, weights, network->dmin, 0};
    return new;
 }
 

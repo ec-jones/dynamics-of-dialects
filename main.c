@@ -1,4 +1,5 @@
-// TODO: tidy, local_match weights
+// TODO: sprintf mkdir
+//       merge write_overlap_window with compare and so forth
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,281 +8,84 @@
 #include <assert.h>
 #include <ctype.h>
 #include <sys/stat.h>
+#include <stdarg.h>
 #include "network.h"
 
-// Parameters
-typedef enum { NONE = 0, PERCAT = 1, LINGCAT = 2, MATCH = 4, BOUNDS = 8, LOCAL_MATCH = 16, MATCH_ENV = 32, LOCAL_MATCH_ENV = 64, MATCH_WINDOW = 128, SPLIT_POP = 256 } MODE;
-Network *network, *save;
-int N = 100;
-unsigned long long int T = 100e7, dump_T = -1;
-float d = 0.05;
-MODE mode = PERCAT  | LINGCAT | MATCH;
-FILE *p = NULL, *m = NULL, *l = NULL, *b = NULL, *lm = NULL, *me = NULL, *lme = NULL, *mw = NULL, *s = NULL;
+#define T 100e7
 
-// Open files
-void open(char *out) {
+// Open a formatted file path
+FILE *open(char *format, ...) {
    char buf[100];
-   sprintf(buf, "./data/%s", out);
-   mkdir("./data/", 0777);
-   mkdir(buf, 0777);
-   if (mode & PERCAT) {
-      sprintf(buf, "./data/%s/percat.dat", out);
-      p = fopen(buf, "w");
-      assert(p != NULL);
-   }
-   if (mode & LINGCAT) {
-      sprintf(buf, "./data/%s/lingcat.dat", out);
-      l = fopen(buf, "w");
-      assert(l != NULL);
-   }
-   if (mode & MATCH) {
-      sprintf(buf, "./data/%s/match.dat", out);
-      m = fopen(buf, "w");
-      assert(m != NULL);
-   }
-   if (mode & BOUNDS) {
-      sprintf(buf, "./data/%s/bounds.dat", out);
-      b = fopen(buf, "w");
-      assert(b != NULL);
-   }
-   if (mode & LOCAL_MATCH) {
-      sprintf(buf, "./data/%s/local_match.dat", out);
-      lm = fopen(buf, "w");
-      assert(lm != NULL);
-   }
-   if (mode & LOCAL_MATCH_ENV) {
-      sprintf(buf, "./data/%s/local_match_env.dat", out);
-      lme = fopen(buf, "w");
-      assert(lme != NULL);
-   }
-   if (mode & MATCH_ENV) {
-      sprintf(buf, "./data/%s/match_env.dat", out);
-      me = fopen(buf, "w");
-      assert(me != NULL);
-   }
-   if (mode & MATCH_WINDOW) {
-      sprintf(buf, "./data/%s/match_window.dat", out);
-      mw = fopen(buf, "w");
-      assert(mw != NULL);
-   }
-   if (mode & SPLIT_POP) {
-      sprintf(buf, "./data/%s/split.dat", out);
-      s = fopen(buf, "w");
-      assert(s != NULL);
-   }
+
+   va_list argptr;
+   va_start(argptr, format);
+   vsnprintf(buf, sizeof(buf), format, argptr);
+   va_end(argptr);
+
+   FILE *f = fopen(buf, "w");
+   assert(f != NULL);
+   return f;
 }
 
-// Close files
-void close(void) {
-   if (mode & PERCAT) {
-      fclose(p);
-   }
-   if (mode & LINGCAT) {
-      fclose(l);
-   }
-   if (mode & MATCH) {
-      fclose(m);
-   }
-   if (mode & LOCAL_MATCH) {
-      fclose(lm);
-   }
-   if (mode & MATCH_ENV) {
-      fclose(me);
-   }
-   if (mode & LOCAL_MATCH_ENV) {
-      fclose(lme);
-   }
-   if (mode & SPLIT_POP) {
-      fclose(s);
-   }
+// Write the number of perceptual categories to a file
+void write_percat(FILE *f, Network *network, unsigned long long int t) {
+   fprintf(f, "%lld %f\n", t, (((float)network->split_count) + ((float)network->n)) / ((float)network->n));
 }
 
-// Print the linguistic category boundaries to file
-void dump_bounds(Category *cat, FILE *f) {
-   cat = left_most(cat);
-
-   while(true) {
-      if (cat == NULL) {
-         return;
-      }
-      else if (cat->next == NULL) {
-         fprintf(f, "%f", cat->top);
-         return;
-      }
-      else {
-         if (cat->head != NULL && cat->next->head != NULL
-             && peek(cat) != peek(cat->next)) {
-            fprintf(f, "%f ", cat->top);
-         }
-         cat = cat->next;
-      }
+// Write the number of linguistic categories to a file
+void write_lingcat(FILE *f, Network *network, unsigned long long int t) {
+   float acc = 0;
+   for (int i = 0; i < network->n; i++) {
+      acc += lingcat_categories(network->nodes[i]->tree);
    }
+   fprintf(f, "%lld %f\n", t, acc / network->n);
 }
 
-// The number of linguistic categories in a tree
-int lingcat_categories(Category *cat) {
-   cat = left_most(cat);
-
-   int acc = 1;
-   while(cat != NULL) {
-      bool inc = false;
-      if (cat->head == NULL) {
-        cat = cat->next;
-        continue;
+// Write the overlap to a file
+void write_overlap(FILE *f, Network *network, unsigned long long int t, float min, float max, bool env, bool local) {
+   float acc = 0, acc_weight = 0;
+   for (int i = 0; i < network->n; i++) {
+      for (int j = i + 1; j < network->n; j++) {
+         float weight = local ? network->weights[i][j] : 1;
+         acc += weight * overlap(network->nodes[i], network->nodes[j], min, max, env);
+         acc_weight += weight;
       }
-      else if (cat->next == NULL || cat->next->head == NULL) {
-        inc = true;
-      }
-      else {
-        inc = peek(cat) != peek(cat->next);
-      }
-      if (inc) {
-        acc++;
-      }
-      cat = cat->next;
    }
-   return acc;
+   fprintf(f, "%lld %f\n", t, acc / acc_weight);
 }
 
-// Write data to files
-void write(unsigned long long int t) {
-   if (mode & PERCAT) {
-      fprintf(p, "%lld %f\n", t, ((float)split_count + N) / N);
-   }
-   if (mode & LINGCAT) {
-      float acc = 0;
-      for (int i = 0; i < N; i++) {
-         acc += lingcat_categories(network->nodes[i]->tree);
+// Write an overlap window to a file
+void write_overlap_window(FILE *f, Network *network, bool env, bool local) {
+   const float width = 0.1;
+   for (float bottom = 0; bottom <= 2.0; bottom += 0.1) {
+      if (bottom + width > 1.0) {
+         break;
       }
-      fprintf(l, "%lld %f\n", t, acc / N);
-   }
-   if (mode & MATCH) {
-      float acc = 0;
-      for (int i = 0; i < N; i++) {
-         for (int j = i + 1; j < N; j++) {
-            acc += overlap(network->nodes[i], network->nodes[j], 0, 1, false);
+      float acc = 0, acc_weight = 0;
+      for (int i = 0; i < network->n; i++) {
+         for (int j = i + 1; j < network->n; j++) {
+            float weight = local ? network->weights[i][j] : 1;
+            acc += weight * overlap(network->nodes[i], network->nodes[j], bottom, bottom + width, env);
+            acc_weight += weight;
          }
       }
-      fprintf(m, "%lld %f\n", t, 2.0f * acc / (N * (N - 1)));
-   }
-   // if (mode & LOCAL_MATCH) {
-   //    int deg_acc = 0;
-   //    float acc = 0;
-   //    for (int i = 0; i < N; i++) {
-   //       int deg = network->nodes[i]->degree;
-   //       deg_acc += deg;
-   //       for (int j = 0; j < deg; j++) {
-   //          acc += match_node(network->nodes[i], network->nodes[i]->neighbours[j], 0, 1, false);
-   //       }
-   //    }
-   //    fprintf(lm, "%lld %f\n", t, acc / deg_acc);
-   // }
-   if (mode & MATCH_ENV) {
-      float acc = 0;
-      for (int i = 0; i < N; i++) {
-         for (int j = i + 1; j < N; j++) {
-            acc += overlap(network->nodes[i], network->nodes[j], 0, 1, true);
-         }
-      }
-      fprintf(me, "%lld %f\n", t, 2.0f * acc / (N * (N - 1)));
-   }
-   // if (mode & LOCAL_MATCH_ENV) {
-   //    int deg_acc = 0;
-   //    float acc = 0;
-   //    for (int i = 0; i < N; i++) {
-   //       int deg = network->nodes[i]->degree;
-   //       deg_acc += deg;
-   //       for (int j = 0; j < deg; j++) {
-   //          acc += match_node(network->nodes[i], network->nodes[i]->neighbours[j], 0, 1, true);
-   //       }
-   //    }
-   //    fprintf(lme, "%lld %f\n", t, acc / deg_acc);
-   // }
-   if (mode & BOUNDS && t >= dump_T) {
-      mode = mode & ~BOUNDS ;
-      for (int i = 0; i < N; i++) {
-         dump_bounds(network->nodes[i]->tree, b);
-         fprintf(b, "\n");
-      }
-      fclose(b);
-   }
-   if (mode & MATCH_WINDOW && t >= dump_T) {
-      mode = mode & ~MATCH_WINDOW;
-      const float width = 0.1;
-      for (float bottom = 0; bottom <= 2.0; bottom += 0.1) {
-         if (bottom + width > 1.0) {
-            break;
-         }
-         float acc = 0;
-         for (int i = 0; i < N; i++) {
-            for (int j = i + 1; j < N; j++) {
-               acc += overlap(network->nodes[i], network->nodes[j], bottom, bottom + width, false);
-            }
-         }
-         fprintf(mw, "%f %f\n", bottom + (width / 2.0), 2.0f * acc / (N * (N - 1)));
-      }
+      fprintf(f, "%f %f\n", bottom + (width / 2.0), acc / acc_weight);
    }
 }
 
-// Get two stimuli using the parameters
-void get_stimuli(float *a, float *b, float h, float t) {
-   *a = frand();
-   *b = frand();
-   while (fabs(*a - *b) <= d) {
-      *b = frand();
-   }
-
-   if (h*t != 0.0 && h*t != 1.0) {
-      if (*a <= h * t) {
-         *a /= h;
-      } else {
-         *a -= h * t;
-         *a *= (1.0 - t) / (1.0 - (h*t));
-         *a += t;
-      }
-
-      if (*b <= h * t) {
-         *b /= h;
-      } else {
-         *b -= h * t;
-         *b *= (1.0 - t) / (1.0 - (h*t));
-         *b += t;
+// Write the network weights to a file
+void write_weights(FILE *f, Network *network) {
+   for (int i = 0; i < network->n; i++) {
+      for (int j = 0; j < network->n; j++) {
+         fprintf(f, "%d %d %f\n", i, j, network->weights[i][j]);
       }
    }
-}
-
-// Dump network
-void dump_network(Network *network, int T) {
-   char buf[100];
-   sprintf(buf, "./data/communities_rand/dump_%d.dat", T);
-   FILE *n = fopen(buf, "w");
-   assert(n != NULL);
-
-   for (int i = 0; i < N ; i++) {
-      for (int j = 0; j < N; j++) {
-         fprintf(n, "%d %d %f\n", i, j, network->weights[i][j]);
-      }
-   }
-}
-
-// Get an agents index and an index from its adj list
-void get_agents(Network *network, int *n, int *m) {
-   *n = frand() * N;
-   float cum[N];
-   cum[0] = network->weights[*n][0];
-   for (int i = 1; i < N; i++) {
-      cum[i] = cum[i - 1] + network->weights[*n][i];
-   }
-   float p = frand() * cum[N - 1];
-   int i = 0;
-   for (; i < N && p > cum[i]; i++) { }
-   *m = i;
 }
 
 int A = 0, B = 0, C = 0;
-void names(void) {
+void names(Network *network) {
    A = 0, B = 0, C = 0;
-   for (int i = 0; i < N; i++) {
+   for (int i = 0; i < network->n; i++) {
       Category *cat = left_most(network->nodes[i]->tree);
       while(cat != NULL) {
          bool inc = false;
@@ -314,8 +118,9 @@ void names(void) {
 }
 
 // Window overlap between poppulations
-void compare(void) {
-   names();
+void write_compare(FILE *s, Network *network, Network *save) {
+   int N = network->n;
+   names(network);
    fprintf(s, "A: %d\n", A);
    const float width = 0.1;
    for (float bottom = 0; bottom <= 2.0; bottom += 0.1) {
@@ -325,7 +130,7 @@ void compare(void) {
       float acc = 0;
       for (int i = 0; i < N; i++) {
          for (int j = 0; j < N / 2; j++) {
-            acc += match_node(network->nodes[i], save->nodes[j], bottom, bottom + width, true);
+            acc += overlap(network->nodes[i], save->nodes[j], bottom, bottom + width, true);
          }
       }
       fprintf(s, "%f %f\n", bottom + (width / 2), 2 * acc / (N * N));
@@ -338,7 +143,7 @@ void compare(void) {
       float acc = 0;
       for (int i = 0; i < N; i++) {
          for (int j = N / 2; j < N; j++) {
-            acc += match_node(network->nodes[i], save->nodes[j], bottom, bottom + width, true);
+            acc += overlap(network->nodes[i], save->nodes[j], bottom, bottom + width, true);
          }
       }
       fprintf(s, "%f %f\n", bottom + (width / 2), 2 * acc/ (N * N));
@@ -346,53 +151,99 @@ void compare(void) {
    fprintf(s, "C: %d\n", C);
 }
 
+// Study 2
+void contact(char *path, int r) {
+   FILE *l = open("data/%s_%d/lingcat.dat", path, r);
+   FILE *lo = open("data/%s_%d/local_overlap_env.dat", path, r);
+   FILE *o = open("data/%s_%d/overlap_env.dat", path, r);
+   FILE *s = open("data/%s_%d/split.dat", path, r);
+
+   Network *network = create_network(100, 0.05);
+   make_isolate(network, 0.0, 0.0);
+
+   long double interval = 100.0;
+   for (unsigned long long int t = 0; t < T; t++) {
+      step(network, true, false);
+
+      if (t >= interval) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+         interval *= 1.1;
+         printf("Running: %Lf%%\n", t / T * 100.0l);
+
+         write_overlap(o, network, t, 0, 1, true, false);
+         write_overlap(lo, network, t, 0, 1, true, true);
+      }
+   }
+
+   Network *clone = clone_network(network);
+   make_complete(network, 1);
+
+   interval = 100.0;
+   for (unsigned long long int t = 0; t < T; t++) {
+      step(network, false, false);
+
+      if (t >= interval) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+         interval *= 1.1;
+         printf("Running: %Lf%%\n", t / T * 100.0l);
+
+         write_overlap(o, network, t, 0, 1, true, false);
+         write_overlap(lo, network, t, 0, 1, true, true);
+      }
+   }
+
+   write_compare(s, network, clone);
+
+   delete_network(clone);
+   delete_network(network);
+
+   fclose(s);
+   fclose(o);
+   fclose(lo);
+   fclose(l);
+}
+
+// Study 3
+void communities(char *path, bool rand) {
+   FILE *o = open("data/%s/overlap.dat", path);
+   FILE *l = open("data/%s/local_overlap.dat", path);
+
+   Network *network = create_network(100, 0.05);
+   make_complete(network, 0.5);
+
+   long double interval = 100.0;
+   for (unsigned long long int t = 0; t < T; t++) {
+      step(network, true, rand);
+
+      if (t >= interval) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+         interval *= 1.1;
+         printf("Running: %Lf%%\n", t / T * 100.0l);
+
+         FILE *n = open("data/%s/dump/%d.dat", path, t);
+         write_weights(n, network);
+         fclose(n);
+
+         write_overlap(o, network, t, 0, 1, false, false);
+         write_overlap(l, network, t, 0, 1, false, true);
+      }
+   }
+
+   delete_network(network);
+
+   fclose(o);
+   fclose(l);
+}
+
 // Entry point
 int main(int argc, char **argv) {
    time_t t;
    srand((unsigned) time(&t));
    clock_t begin = clock();
+   mkdir("data", 0777);
 
-   open("communities_rand");
-   network = create_network(N);
-   make_complete(network, 0.5);
-
-   long double step = 100.0l;
-   long double step2 = 100.0l;
-   for (unsigned long long int i = 0; i < T; i++) {
-      int n, m;
-      get_agents(network, &n, &m);
-      Agent *spk = network->nodes[n],
-            *lst = network->nodes[m];
-
-      float a, b;
-      get_stimuli(&a, &b, spk->h, spk->t);
-
-      if (negotiate(spk, lst, a, b, -1)) {
-         network->weights[n][m] = pow(network->weights[n][m], 0.5);
-         network->weights[m][n] = pow(network->weights[m][n], 0.5);
-      }
-      else {
-         network->weights[n][m] = pow(network->weights[n][m], 1.5);
-         network->weights[m][n] = pow(network->weights[m][n], 1.5);
-      }
-
-      if (i >= step) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
-         step *= 1.1;
-         printf("Running: %llu, %Lf%%\n", i, (long double)i / (long double)T * 100.0l);
-         write(i);
-      }
-      if (i >= step2) {
-         step2 *= 2;
-         dump_network(network, i);
-      }
-   }
-
-   delete_network(network);
-   close();
+   mkdir("data/contact_0", 0777);
+   contact("contact", 0);
 
    clock_t end = clock();
    double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-
    printf("Done in: %f seconds.", time_spent);
    getchar();
    return 0;
