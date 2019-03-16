@@ -1,8 +1,8 @@
-// TODO: parameterise update functions
-
 #include <stdlib.h>
-#include <assert.h>
+#include <stdio.h>
+#include <ctype.h>
 #include <math.h>
+#include <assert.h>
 #include "agent.h"
 
 // Undirected network of agents
@@ -27,9 +27,11 @@ Network *create_network(int n, float dmin) {
 
    float **weights = malloc(n * sizeof(float*));
    assert(weights != NULL);
+
    for (int i = 0; i < n; i++) {
       weights[i] = malloc(n * sizeof(float));
       assert(weights[i] != NULL);
+
       for (int j = 0; j < n; j++) {
          weights[i][j] = 0;
       }
@@ -39,49 +41,48 @@ Network *create_network(int n, float dmin) {
    return network;
 }
 
+// Generate float in range [0, 1)
+float frand(void) {
+   float f = ((float)rand()) / (((float)(RAND_MAX)) + 1.0);
+   return f >= 1.0 ? 0.0 : f;
+}
+
 // Check if network already contains edge
 bool contains_edge(Network *network, int i, int j) {
-   return network->weights[i][j] != 0;
+   return network->weights[i][j] != 0.0;
 }
 
 // Insert undirect edge with weight p
-void edge_insert(Network *network, int i, int j, float p) {
-   assert(i != j); // No self loops
-   network->weights[i][j] = p;
-   network->weights[j][i] = p;
+void set_weight(Network *network, int i, int j, float w) {
+   assert(i != j); // no self loops
+   network->weights[i][j] = w;
+   network->weights[j][i] = w;
+}
+
+// Assign environment to agent i, mod if different name categories
+void assign_environment(Network *network, int i, float h, float t, bool mod) {
+   if (i < network->n / 2) {
+      network->nodes[i]->name_mod = mod ?  -2 : -1;
+      network->nodes[i]->h = h;
+      network->nodes[i]->t = t;
+   }
+   else {
+      network->nodes[i]->name_mod = mod ?  -3 : -1;
+      network->nodes[i]->h = (1.0 - h*t) / (1.0 - t);
+      network->nodes[i]->t = 1.0 - t;
+   }
+
+   if (h == 0.0 || h*t == 1.0) {
+      network->nodes[i]->h = 1.0;
+      network->nodes[i]->t = 1.0;
+   }
 }
 
 // Connect all nodes in a new network
 void make_complete(Network *network, float p) {
    for (int i = 0; i < network->n; i++) {
       for (int j = i + 1; j < network->n; j++) {
-         edge_insert(network, i, j, p);
-      }
-   }
-}
-
-// Assign environment to agent i, mod if different name categories
-void assign_environment(Network *network, int i, float h, float t, bool mod) {
-   if (h == 0 || h*t == 1) {
-      network->nodes[i]->h = 1;
-      network->nodes[i]->t = 1;
-   }
-   else {
-      if (i < network->n / 2) {
-         network->nodes[i]->h = h;
-         network->nodes[i]->t = t;
-      }
-      else {
-         network->nodes[i]->h = (1.0f - h*t) / (1.0f - t);
-         network->nodes[i]->t = 1.0f - t;
-      }
-   }
-   if (mod) {
-      if (i < network->n / 2) {
-         network->nodes[i]->name_mod = -2;
-      }
-      else {
-         network->nodes[i]->name_mod = -3;
+         set_weight(network, i, j, p);
       }
    }
 }
@@ -90,8 +91,9 @@ void assign_environment(Network *network, int i, float h, float t, bool mod) {
 void make_linear(Network *network, float h, float t) {
    for (int i = 0; i < network->n; i++) {
       assign_environment(network, i, h, t, false);
+
       if (i < network->n - 1) {
-         edge_insert(network, i, i + 1, 1.0);
+         set_weight(network, i, i + 1, 1.0);
       }
    }
 }
@@ -100,13 +102,14 @@ void make_linear(Network *network, float h, float t) {
 void make_isolate(Network *network, float h, float t) {
    for (int i = 0; i < network->n; i++) {
       assign_environment(network, i, h, t, true);
+
       for (int j = 0; j < network->n; j++) {
          if ((i <  network->n / 2  && j >= network->n / 2) ||
              (i >= network->n / 2  && j <  network->n / 2) ||
              (i == j)) {
             continue;
          }
-         edge_insert(network, i, j, 1.0);
+         set_weight(network, i, j, 1.0);
       }
    }
 }
@@ -118,21 +121,16 @@ void reconnect(Network *network, float h, float t) {
       network->nodes[i]->t = t;
       network->nodes[i]->name_mod = -4;
       for (int j = i + 1; j < network->n; j++) {
-         edge_insert(network, i, j, 1.0);
+         set_weight(network, i, j, 1.0);
       }
    }
-}
-
-// Generate float in range [0, 1)
-float frand(void) {
-   float f = ((float)rand()) / (((float)(RAND_MAX)) + 1.0);
-   return f >= 1.0 ? 0.0 : f;
 }
 
 // Make new network into a small-world network using the Watts–Strogatz model
 void watts_strogatz(Network *network, float h, float t, int K, float beta) {
    for (int i = 0; i < network->n; i++) {
       assign_environment(network, i, h, t, false);
+
       for (int k = 0; k < K / 2; k++) {
          int j = (i + 1 + k) % network->n;
          if (frand() <= beta) {
@@ -141,12 +139,12 @@ void watts_strogatz(Network *network, float h, float t, int K, float beta) {
                j = (j + 1) % network->n;
             }
          }
-         edge_insert(network, i, j, 1.0);
+         set_weight(network, i, j, 1.0);
       }
    }
 }
 
-// Sample from (h, t)-dist with inverse cummulative
+// Sample from (h, t)-dist with inverse cummulative frequency transform
 float resample(float x, float h, float t) {
    if (h*t != 0.0 && h*t != 1.0) {
       if (x <= h * t) {
@@ -160,8 +158,24 @@ float resample(float x, float h, float t) {
    return x;
 }
 
+// Sigmoid like function
+float smootherstep(float x) {
+   const float eps = 0.000001;
+
+   x = x * x * x * (x * (x * 6.0 - 15.0) + 10.0);
+   if (x <= eps) {
+      return eps;
+   }
+   else if (x >= 1 - eps) {
+      return 1 - eps;
+   }
+   else {
+      return x;
+   }
+}
+
 // Make one communication and optionally update weights, if rand the outcome of the communication is random
-void step(Network *network, bool update_weight, bool rand) {
+void step(Network *network, bool update_weight, bool rand, float l1, float l2) {
    int N = network->n;
 
    int n = frand() * N; 
@@ -176,12 +190,18 @@ void step(Network *network, bool update_weight, bool rand) {
    float p = frand() * cum[N - 1];
 
    int m = 0;
-   while (m < network->n && p > cum[m]) {
+   while (m < N && p > cum[m]) {
       m++;
+   }
+   if (network->weights[n][m] == 0.0) {
+      printf("n:%d m:%d\n", n, m);
+      printf("cum[n, m-1]:%f\n", cum[m - 1]);
+      printf("cum[n, m+1]:%f\n", cum[m + 1]);
+      printf("p:%f\n", p);
    }
    Agent *lst = network->nodes[m];
 
-   // generate uniform stimuli
+   // generate stimuli
    float a = frand(), b = frand();
    while (fabs(a - b) <= network->dmin) {
       b = frand();
@@ -191,14 +211,8 @@ void step(Network *network, bool update_weight, bool rand) {
 
    bool succ = rand ? frand() > 0.5 : negotiate(spk, lst, a, b, -1, &network->split_count);
    if (update_weight) {
-      if (succ) {
-         network->weights[n][m] = pow(network->weights[n][m], 0.5);
-         network->weights[m][n] = pow(network->weights[m][n], 0.5);
-      }
-      else {
-         network->weights[n][m] = pow(network->weights[n][m], 1.5);
-         network->weights[m][n] = pow(network->weights[m][n], 1.5);
-      }
+      network->weights[n][m] = smootherstep(network->weights[n][m] + (succ ? l1 : -l2));
+      network->weights[m][n] = smootherstep(network->weights[m][n] + (succ ? l1 : -l2));
    }
 }
 

@@ -118,14 +118,16 @@ float overlap(Agent *agent_x, Agent *agent_y, float min, float max, bool env) {
       Category **smaller = x->top < y->top ? &x : &y;
 
       float high = MIN(max, (*smaller)->top), low = MAX(min, last_top);
-      if (x->head != NULL && y->head != NULL && peek(x) == peek(y)) {
-         if (env) {
-            float acc_x = scale(high, low, agent_x->h, agent_x->t),
-                  acc_y = scale(high, low, agent_y->h, agent_y->t);
-            acc += (acc_x + acc_y) / 2;
-         }
-         else {
-            acc += high - low;
+      if (low <= high) {
+         if (x->head != NULL && y->head != NULL && peek(x) == peek(y)) {
+            if (env) {
+               float acc_x = scale(high, low, agent_x->h, agent_x->t),
+                     acc_y = scale(high, low, agent_y->h, agent_y->t);
+               acc += (acc_x + acc_y) / 2;
+            }
+            else {
+               acc += high - low;
+            }
          }
       }
       last_top = high;
@@ -140,7 +142,7 @@ float overlap(Agent *agent_x, Agent *agent_y, float min, float max, bool env) {
 // Clone agent with only its leaves
 Agent *clone_agent(Agent *agent) {
    Agent *new = create_agent();
-   *new = (Agent){clone_leaves(agent->tree), agent->h, agent->t, agent->name_mod, agent->time_stamp, };
+   *new = (Agent){clone_leaves(agent->tree), agent->h, agent->t, agent->name_mod, agent->time_stamp};
    return new;
 }
 

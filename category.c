@@ -1,6 +1,4 @@
-#include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <assert.h>
 #include "name.h"
 
@@ -9,6 +7,7 @@ typedef struct _category {
    Name *head, *tail;
    struct _category *left, *right;
 
+   // for leaf traversal
    float top;
    struct _category *next, *prev;
 } Category;
@@ -22,40 +21,9 @@ Category *create_category(void) {
    return cat;
 }
 
-// Return the most relevant name
-int peek(Category *cat) {
-   return cat->head->value;
-}
-
-// Insert new most relevant name to front of list
-void push(Category *cat, int value, int time_stamp) {
-   if (cat->head == NULL) {
-      cat->head = create_name(value, time_stamp);
-      cat->tail = cat->head;
-   }
-   else {
-      Name *new_head = create_name(value, time_stamp);
-      new_head->next = cat->head;
-      cat->head = new_head;
-   }
-}
-
-// Insert new least relevant name to back of list
-void enqueue(Category *cat, int value, int time_stamp) {
-   if (cat->head == NULL) {
-      cat->head = create_name(value, time_stamp);
-      cat->tail = cat->head;
-   }
-   else {
-      Name *new_tail = create_name(value, time_stamp);
-      cat->tail->next = new_tail;
-      cat->tail = new_tail;
-   }
-}
-
-// Get the Category associated with x
+// Get the partition that x falls in
 Category *get_category(Category *cat, float x) {
-   while(cat->split != -1) {
+   while (cat->split != -1) {
       if (x < cat->split) {
          cat = cat->left;
       }
@@ -98,16 +66,47 @@ void inner_split(Category *cat, float x, float y) {
    cat->right->head = clone_name(cat->head, &cat->right->tail);
 }
 
+// Return the preferred name associated with a category
+int peek(Category *cat) {
+   return cat->head->value;
+}
+
+// Insert new most relevant name to front of list
+void push(Category *cat, int value, int time_stamp) {
+   if (cat->head == NULL) {
+      cat->head = create_name(value, time_stamp);
+      cat->tail = cat->head;
+   }
+   else {
+      Name *new_head = create_name(value, time_stamp);
+      new_head->next = cat->head;
+      cat->head = new_head;
+   }
+}
+
+// Insert new least relevant name to back of list
+void enqueue(Category *cat, int value, int time_stamp) {
+   if (cat->head == NULL) {
+      cat->head = create_name(value, time_stamp);
+      cat->tail = cat->head;
+   }
+   else {
+      Name *new_tail = create_name(value, time_stamp);
+      cat->tail->next = new_tail;
+      cat->tail = new_tail;
+   }
+}
+
 // The number of linguistic categories in a tree
 int lingcat_categories(Category *cat) {
    cat = left_most(cat);
 
-   int acc = 1;
+   int acc = 0;
    while(cat != NULL) {
 
-      if (cat->next == NULL ||
-          cat->next->head == NULL ||
-          (cat->head != NULL && peek(cat) != peek(cat->next))) {
+      if (cat->head != NULL &&
+            (cat->next == NULL ||
+            (cat->next->head != NULL && peek(cat) != peek(cat->next)))) {
          acc++;
       }
 

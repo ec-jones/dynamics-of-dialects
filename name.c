@@ -1,6 +1,5 @@
-#include <stdbool.h>
 #include <stdlib.h>
-#include <stdio.h>
+#include <stdbool.h>
 #include <assert.h>
 
 // Name node
@@ -60,11 +59,14 @@ bool contain_name(Name *name, int value, int time) {
 // Clone a name list (set tail to last name cloned)
 Name *clone_name(Name *src, Name **tail) {
    if (src == NULL) {
+      *tail = NULL;
       return NULL;
    }
    Name *name = create_name(src->value, src->time_stamp);
    name->next = clone_name(src->next, tail);
-   *tail = name;
+   if(name->next == NULL) {
+      *tail = name;
+   }
    return name;
 }
 
