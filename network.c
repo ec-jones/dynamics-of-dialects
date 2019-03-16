@@ -187,17 +187,14 @@ void step(Network *network, bool update_weight, bool rand, float l1, float l2) {
       cum[i] = cum[i - 1] + network->weights[n][i];
    }
 
-   float p = frand() * cum[N - 1];
+   float p = 0;
+   while (p == 0) {
+      p = frand() * cum[N - 1];
+   }
 
    int m = 0;
    while (m < N && p > cum[m]) {
       m++;
-   }
-   if (network->weights[n][m] == 0.0) {
-      printf("n:%d m:%d\n", n, m);
-      printf("cum[n, m-1]:%f\n", cum[m - 1]);
-      printf("cum[n, m+1]:%f\n", cum[m + 1]);
-      printf("p:%f\n", p);
    }
    Agent *lst = network->nodes[m];
 

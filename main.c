@@ -234,9 +234,6 @@ int main(int argc, char **argv) {
       float l2 = 0.0;
       for (int j = 0; j < 4; j++) {
          l2 += 0.15;
-         if (l1 == l2) {
-            continue;
-         }
          communities("communities", false, l1, l2);
          communities("communities_rand", true, l1, l2);
       }
