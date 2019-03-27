@@ -175,7 +175,7 @@ float smootherstep(float x) {
 }
 
 // Make one communication and optionally update weights, if rand the outcome of the communication is random
-void step(Network *network, bool update_weight, bool rand, float l1, float l2) {
+void step(Network *network, int F, bool update_weight, bool rand, float l1, float l2) {
    int N = network->n;
 
    int n = frand() * N; 
@@ -206,7 +206,7 @@ void step(Network *network, bool update_weight, bool rand, float l1, float l2) {
    a = resample(a, spk->h, spk->t);
    b = resample(b, spk->h, spk->t);
 
-   bool succ = rand ? frand() > 0.5 : negotiate(spk, lst, a, b, -1, &network->split_count);
+   bool succ = rand ? frand() > 0.5 : negotiate(spk, lst, a, b, F, &network->split_count);
    if (update_weight) {
       network->weights[n][m] = smootherstep(network->weights[n][m] + (succ ? l1 : -l2));
       network->weights[m][n] = smootherstep(network->weights[m][n] + (succ ? l1 : -l2));

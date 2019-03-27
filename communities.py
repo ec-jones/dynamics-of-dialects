@@ -8,8 +8,8 @@ import os
 a = [0.15, 0.3, 0.45]
 b = [0.15, 0.3, 0.45]
 
-fig, axes = plt.subplots(3, 4)
-plt.setp(axes.flat, xlabel='Games per player', ylabel='Overlap')
+fig, axes = plt.subplots(3, 3)
+plt.setp(axes.flat, xlabel='Games per player', ylabel='Modularity') #ylabel='Overlap') 
 
 pad = 5
 
@@ -25,7 +25,7 @@ for ax, row in zip(axes[:,0], ['Lambda1: {}'.format(row) for row in a]):
 
 fig.tight_layout()
 
-for dir0 in os.listdir('data'):
+for dir0 in os.listdir('study3'):
    m = re.match(r"communities_(0\.[0-9]+)_(0\.[0-9]+)", dir0)
    try:
       if m != None:
@@ -35,10 +35,10 @@ for dir0 in os.listdir('data'):
          
          T = []
          modularity = []
-         for dir in os.listdir('data/' + dir0 + '/dump'):
+         for dir in os.listdir('study3/' + dir0 + '/dump'):
             m = re.match(r"([0-9]+)\.dat", dir)
             if m != None:
-               fh = open('data/' + dir0 + '/dump/' + dir, 'r')
+               fh = open('study3/' + dir0 + '/dump/' + dir, 'r')
                G = nx.read_weighted_edgelist(fh)
                fh.close()
                partition = community.best_partition(G)

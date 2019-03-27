@@ -1,3 +1,5 @@
+// TODO: Tidy study 2
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -114,7 +116,7 @@ void write_compare(FILE *s, Network *network, Network *save) {
             acc += overlap(network->nodes[i], save->nodes[j], min, max, true);
          }
       }
-      fprintf(s, "%f %f", (min + max) / 2.0, acc / acc_weight);
+      fprintf(s, "%f %f\n", (min + max) / 2.0, acc / acc_weight);
    }
 
    fprintf(s, "B: %d\n", B);
@@ -128,25 +130,150 @@ void write_compare(FILE *s, Network *network, Network *save) {
             acc += overlap(network->nodes[i], save->nodes[j], min, max, true);
          }
       }
-      fprintf(s, "%f %f", (min + max) / 2.0, acc / acc_weight);
+      fprintf(s, "%f %f\n", (min + max) / 2.0, acc / acc_weight);
    }
 
    fprintf(s, "C: %d\n", C);
 }
 
-void contact(char *path, int r) {
-   dir("data/%s_%d", path, r);
-   FILE *l = open("data/%s_%d/lingcat.dat", path, r);
-   FILE *lo = open("data/%s_%d/local_overlap_env.dat", path, r);
-   FILE *o = open("data/%s_%d/overlap_env.dat", path, r);
-   FILE *s = open("data/%s_%d/split.dat", path, r);
+// Core
+void core(char *path) {
+   FILE *p = open("%s/percat.dat", path);
+   FILE *l = open("%s/lingcat.dat", path);
+   FILE *o = open("%s/overlap.dat", path);
 
    Network *network = create_network(100, 0.05);
-   make_isolate(network, 0.0, 0.0);
+   make_complete(network, 1);
 
    long double interval = 100.0;
    for (unsigned long long int t = 0; t < 100e7; t++) {
-      step(network, false, false, 0.0, 0.0);
+      step(network, -1, false, false, 0.0, 0.0);
+
+      if (t >= interval) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+         interval *= 1.1;
+         printf("Running: %Lf%%\n", t / 100e7 * 100.0l);
+
+         write_percat(p, network, t);
+         write_lingcat(l, network, t);
+         write_overlap(o, network, t, true, false);
+      }
+   }
+
+   delete_network(network);
+
+   fclose(o);
+   fclose(l);
+   fclose(p);
+}
+
+// Study1
+void linear_network(char *path, int F) {
+   dir("study1/%s_%d", path, F);
+   FILE *p = open("study1/%s_%d/percat.dat", path, F);
+   FILE *l = open("study1/%s_%d/lingcat.dat", path, F);
+   FILE *o = open("study1/%s_%d/overlap.dat", path, F);
+   FILE *lo = open("study1/%s_%d/local_overlap.dat", path, F);
+
+   Network *network = create_network(100, 0.05);
+   make_linear(network, 0, 0);
+
+   long double interval = 100.0;
+   for (unsigned long long int t = 0; t < 100e7; t++) {
+      step(network, F, false, false, 0.0, 0.0);
+
+      if (t >= interval) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+         interval *= 1.1;
+         printf("Running: %Lf%%\n", t / 100e7 * 100.0l);
+
+         write_percat(p, network, t);
+         write_lingcat(l, network, t);
+         write_overlap(o, network, t, true, false);
+         write_overlap(lo, network, t, true, true);
+      }
+   }
+
+   delete_network(network);
+
+   fclose(lo);
+   fclose(o);
+   fclose(l);
+   fclose(p);
+}
+
+void ring_lattice(char *path, int K) {
+   dir("study1/%s_%d", path, K);
+   FILE *p = open("study1/%s_%d/percat.dat", path, K);
+   FILE *l = open("study1/%s_%d/lingcat.dat", path, K);
+   FILE *o = open("study1/%s_%d/overlap.dat", path, K);
+   FILE *lo = open("study1/%s_%d/local_overlap.dat", path, K);
+
+   Network *network = create_network(100, 0.05);
+   watts_strogatz(network, 4.0, 0.2, K, 0.0);
+
+   long double interval = 100.0;
+   for (unsigned long long int t = 0; t < 100e7; t++) {
+      step(network, -1, false, false, 0.0, 0.0);
+
+      if (t >= interval) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+         interval *= 1.1;
+         printf("Running: %Lf%%\n", t / 100e7 * 100.0l);
+
+         write_percat(p, network, t);
+         write_lingcat(l, network, t);
+         write_overlap(o, network, t, true, false);
+         write_overlap(lo, network, t, true, true);
+      }
+   }
+
+   delete_network(network);
+
+   fclose(lo);
+   fclose(o);
+   fclose(l);
+   fclose(p);
+}
+
+void beta_simulation(char *path, float beta) {
+   dir("study1/%s_%f", path, beta);
+   FILE *o = open("study1/%s_%f/overlap.dat", path, beta);
+   FILE *lo = open("study1/%s_%f/local_overlap.dat", path, beta);
+
+   Network *network = create_network(100, 0.05);
+   watts_strogatz(network, 4.0, 0.2, 4, beta);
+
+   long double interval = 100.0;
+   for (unsigned long long int t = 0; t < 100e7; t++) {
+      step(network, -1, false, false, 0.0, 0.0);
+
+      if (t >= interval) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+         interval *= 1.1;
+         printf("Running: %Lf%%\n", t / 100e7 * 100.0l);
+
+         write_overlap(o, network, t, true, false);
+         write_overlap(lo, network, t, true, true);
+      }
+   }
+
+   delete_network(network);
+
+   fclose(lo);
+   fclose(o);
+}
+
+// Study 2
+void contact(char *path, int r) {
+   dir("study2/%s_%d", path, r);
+   FILE *l = open("study2/%s_%d/lingcat.dat", path, r);
+   FILE *lo = open("study2/%s_%d/local_overlap_env.dat", path, r);
+   FILE *o = open("study2/%s_%d/overlap_env.dat", path, r);
+   FILE *s = open("study2/%s_%d/split.dat", path, r);
+
+   Network *network = create_network(100, 0.05);
+   make_isolate(network, 4.0, 0.2);
+
+   long double interval = 100.0;
+   for (unsigned long long int t = 0; t < 100e7; t++) {
+      step(network, -1, false, false, 0.0, 0.0);
 
       if (t >= interval) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
          interval *= 1.1;
@@ -159,11 +286,11 @@ void contact(char *path, int r) {
    }
 
    Network *save = clone_network(network);
-   make_complete(network, 1);
+   reconnect(network, 4.0, 0.2);
 
    interval = 100.0;
    for (unsigned long long int t = 0; t < 100e7; t++) {
-      step(network, false, false, 0.0, 0.0);
+      step(network, -1, false, false, 0.0, 0.0);
 
       if (t >= interval) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
          interval *= 1.1;
@@ -185,27 +312,26 @@ void contact(char *path, int r) {
    fclose(lo);
    fclose(l);
 }
-//////////////////////////////////////////////////////////////////////////////////////////////
 
 // Study 3
 void communities(char *path, bool rand, float l1, float l2) {
-   dir("data/%s_%.3f_%.3f", path, l1, l2);
-   dir("data/%s_%.3f_%.3f/dump", path, l1, l2);
-   FILE *o = open("data/%s_%.3f_%.3f/overlap.dat", path, l1, l2);
-   FILE *l = open("data/%s_%.3f_%.3f/local_overlap.dat", path, l1, l2);
+   dir("study3/%s_%.3f_%.3f", path, l1, l2);
+   dir("study3/%s_%.3f_%.3f/dump", path, l1, l2);
+   FILE *o = open("study3/%s_%.3f_%.3f/overlap.dat", path, l1, l2);
+   FILE *l = open("study3/%s_%.3f_%.3f/local_overlap.dat", path, l1, l2);
 
    Network *network = create_network(100, 0.05);
    make_complete(network, 0.5);
 
    long double interval = 100.0;
    for (unsigned long long int t = 0; t < 100e7; t++) {
-      step(network, true, rand, l1, l2);
+      step(network, -1, true, rand, l1, l2);
 
       if (t >= interval) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
          interval *= 1.1;
          printf("Running: %Lf%%\n", t / 100e7 * 100.0l);
 
-         FILE *n = open("data/%s_%.3f_%.3f/dump/%d.dat", path, l1, l2, t);
+         FILE *n = open("study3/%s_%.3f_%.3f/dump/%d.dat", path, l1, l2, t);
          write_weights(n, network);
          fclose(n);
 
@@ -225,19 +351,42 @@ int main(int argc, char **argv) {
    time_t t;
    srand((unsigned) time(&t));
    clock_t begin = clock();
-   dir("data");
 
-   // study3 grid
-   float l1 = 0.0;
-   for (int i = 0; i < 4; i++) {
-      l1 += 0.15;
-      float l2 = 0.0;
-      for (int j = 0; j < 4; j++) {
-         l2 += 0.15;
-         communities("communities", false, l1, l2);
-         communities("communities_rand", true, l1, l2);
-      }
+   // core
+   // dir("core");
+   // core("core");
+
+   // study1
+   dir("study1");
+   // for (int F = 30; F > 5; F /= 2) {
+   //    linear_network("linear_network", F);
+   // }
+   // ring_lattice("ring_lattice", 2);
+   // ring_lattice("ring_lattice", 4);
+   // ring_lattice("ring_lattice", 6);
+   // ring_lattice("ring_lattice", 8);
+   for (int i = 0; i <= 10; i++) {
+      beta_simulation("beta", ((float)i) / 10.0);
    }
+
+   // study2
+   // dir("study2");
+   // for (int r = 0; r < 10; r++) {
+   //    contact("contact_env", r);
+   // }
+
+   // study3
+   // dir("study3");
+   // float l1 = 0.0;
+   // for (int i = 0; i < 3; i++) {
+   //    l1 += 0.15;
+   //    float l2 = 0.0;
+   //    for (int j = 0; j < 3; j++) {
+   //       l2 += 0.15;
+   //       communities("communities", false, l1, l2);
+   //       communities("communities_rand", true, l1, l2);
+   //    }
+   // }
 
    clock_t end = clock();
    double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
