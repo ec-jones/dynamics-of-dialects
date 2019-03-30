@@ -2,6 +2,7 @@ import re
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.stats as stats
 
 
 def read(line):
@@ -130,22 +131,40 @@ def lingcat():
    plt.show()
 
 
-origA, origB, A, B = contact_env()
-print(np.mean(origA))
-print(np.mean(origB))
-W = np.linspace(0, 1, 10)
-fig, ax = plt.subplots(1, 1)
-ax.plot(W, np.mean(A, axis=0), label='Overlap between A and C')
-ax.plot(W, np.mean(B, axis=0), label='Overlap between B and C')
-ax.set_ylabel('Overlap')
-ax.set_xlabel('Stimuli')
-ax.legend()
-plt.show()
+# origA, origB, A, B = contact_env()
+# print(np.mean(origA))
+# print(np.mean(origB))
+# W = np.linspace(0, 1, 10)
+# fig, ax = plt.subplots(1, 1)
+# ax.plot(W, np.mean(A, axis=0), label='Overlap between A and C')
+# ax.plot(W, np.mean(B, axis=0), label='Overlap between B and C')
+# ax.set_ylabel('Overlap')
+# ax.set_xlabel('Stimuli')
+# ax.legend()
+# plt.show()
 
 # local_overlap()
 
-"""
+
 origA, origB, A, B = split()
+print stats.spearmanr(origA, origB)
+edges = np.array((np.array(A)[:,[0,-1]],np.array(B)[:,[0,-1]])).flatten()
+inner = np.array((np.array(A)[:,[1,-2]],np.array(B)[:,[1,-2]])).flatten()
+print np.mean(edges)
+print np.mean(inner)
+print stats.ttest_ind(edges, inner, equal_var=False)
+
+fig, ax = plt.subplots(1, 1)
+ax.hist(origA, bins = 100, label='A')
+ax.hist(origB, bins = 100, label='B')
+ax.set_xlabel('Number of names')
+ax.set_ylabel('Frequency')
+ax.legend()
+plt.show()
+
+print stats.ttest_ind(origA, origB, equal_var=False)
+
+"""
 mu = 0.5 * (np.mean(np.array(A), axis=0) + np.mean(np.array(B), axis=0))
 cov = 0.5 * (np.cov(np.array(A), rowvar=False) + np.cov(np.array(B), rowvar = False))
 

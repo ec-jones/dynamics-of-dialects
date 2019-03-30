@@ -9,7 +9,7 @@
 
 typedef struct _node {
    Category *tree;
-   float h, t;
+   double h, t;
    int name_mod, time_stamp;
 } Agent;
 
@@ -23,7 +23,7 @@ Agent *create_agent(void) {
 }
 
 // Split agent if x and y overlap, if so add new name to x's category
-bool split(Agent *agent, float x, float y) {
+bool split(Agent *agent, double x, double y) {
    Category *cat = agent->tree;
    while (cat != NULL) {
       if (cat->split == -1) {
@@ -46,7 +46,7 @@ bool split(Agent *agent, float x, float y) {
 }
 
 // Main negationation loop, time is forgetting distance
-bool negotiate(Agent *spk, Agent *lst, float x, float y, int time, int *split_count) {
+bool negotiate(Agent *spk, Agent *lst, double x, double y, int time, int *split_count) {
    if (split(spk, x, y)) {
       ++*split_count;
    }
@@ -90,7 +90,7 @@ bool negotiate(Agent *spk, Agent *lst, float x, float y, int time, int *split_co
 }
 
 // Helper function for match_agent
-float scale(float top, float bottom, float h, float t) {
+double scale(double top, double bottom, double h, double t) {
    if (h*t == 1 || h*t == 0) {
       return top - bottom;
    }
@@ -98,7 +98,7 @@ float scale(float top, float bottom, float h, float t) {
       return ((1.0 - (h*t) / 1.0 - t)) * (top - bottom);
    }
    else if (top > t) {
-      float left  = h * (t - bottom),
+      double left  = h * (t - bottom),
             right = ((1.0 - (h*t) / 1.0 - t)) * (top - t);
       return left + right;
    }
@@ -109,19 +109,19 @@ float scale(float top, float bottom, float h, float t) {
 
 // Mesure how much of the perceptual space (within a window) the agents agree op
 // If env weight the result by the average distribution
-float overlap(Agent *agent_x, Agent *agent_y, float min, float max, bool env) {
+double overlap(Agent *agent_x, Agent *agent_y, double min, double max, bool env) {
    Category *x = left_most(agent_x->tree),
             *y = left_most(agent_y->tree);
 
-   float acc = 0, last_top = 0;
+   double acc = 0, last_top = 0;
    while (x != NULL && y != NULL && last_top < max) {
       Category **smaller = x->top < y->top ? &x : &y;
 
-      float high = MIN(max, (*smaller)->top), low = MAX(min, last_top);
+      double high = MIN(max, (*smaller)->top), low = MAX(min, last_top);
       if (low <= high) {
          if (x->head != NULL && y->head != NULL && peek(x) == peek(y)) {
             if (env) {
-               float acc_x = scale(high, low, agent_x->h, agent_x->t),
+               double acc_x = scale(high, low, agent_x->h, agent_x->t),
                      acc_y = scale(high, low, agent_y->h, agent_y->t);
                acc += (acc_x + acc_y) / 2;
             }
@@ -133,7 +133,7 @@ float overlap(Agent *agent_x, Agent *agent_y, float min, float max, bool env) {
       last_top = high;
       *smaller = (*smaller)->next;
    }
-   float width_x = scale(max, min, agent_x->h, agent_x->t),
+   double width_x = scale(max, min, agent_x->h, agent_x->t),
          width_y = scale(max, min, agent_y->h, agent_y->t),
          width = env ? (width_x + width_y) / 2 : (max - min);
    return acc / width;

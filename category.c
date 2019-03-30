@@ -3,12 +3,12 @@
 #include "name.h"
 
 typedef struct _category {
-   float split;
+   double split;
    Name *head, *tail;
    struct _category *left, *right;
 
    // for leaf traversal
-   float top;
+   double top;
    struct _category *next, *prev;
 } Category;
 
@@ -22,7 +22,7 @@ Category *create_category(void) {
 }
 
 // Get the partition that x falls in
-Category *get_category(Category *cat, float x) {
+Category *get_category(Category *cat, double x) {
    while (cat->split != -1) {
       if (x < cat->split) {
          cat = cat->left;
@@ -40,7 +40,7 @@ Category *left_most(Category *cat) {
 }
 
 // Split a node
-void inner_split(Category *cat, float x, float y) {
+void inner_split(Category *cat, double x, double y) {
    cat->split = (x + y) / 2;
 
    cat->left = create_category();

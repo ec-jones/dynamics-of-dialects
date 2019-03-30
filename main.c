@@ -36,12 +36,12 @@ FILE *open(char *format, ...) {
 
 // Write the number of perceptual categories to a file
 void write_percat(FILE *f, Network *network, unsigned long long int t) {
-   fprintf(f, "%lld %f\n", t, (((float)network->split_count) + ((float)network->n)) / ((float)network->n));
+   fprintf(f, "%lld %f\n", t, (((double)network->split_count) + ((double)network->n)) / ((double)network->n));
 }
 
 // Write the number of linguistic categories to a file
 void write_lingcat(FILE *f, Network *network, unsigned long long int t) {
-   float acc = 0;
+   double acc = 0;
    for (int i = 0; i < network->n; i++) {
       acc += lingcat_categories(network->nodes[i]->tree);
    }
@@ -50,10 +50,10 @@ void write_lingcat(FILE *f, Network *network, unsigned long long int t) {
 
 // Write the overlap to a file
 void write_overlap(FILE *f, Network *network, unsigned long long int t, bool env, bool local) {
-   float acc = 0, acc_weight = 0;
+   double acc = 0, acc_weight = 0;
    for (int i = 0; i < network->n; i++) {
       for (int j = i + 1; j < network->n; j++) {
-         float weight = local ? network->weights[i][j] : 1;
+         double weight = local ? network->weights[i][j] : 1;
          acc += weight * overlap(network->nodes[i], network->nodes[j], 0, 1, env);
          acc_weight += weight;
       }
@@ -107,9 +107,9 @@ void write_compare(FILE *s, Network *network, Network *save) {
 
    fprintf(s, "A: %d\n", A);
    for (int i = 0; i < 10; i++) {
-      float min = i * 0.1, max = min + 0.1;
+      double min = i * 0.1, max = min + 0.1;
 
-      float acc = 0, acc_weight = 0;
+      double acc = 0, acc_weight = 0;
       for (int i = 0; i < network->n; i++) {
          for (int j = 0; j < save->n / 2; j++) {
             acc_weight++;
@@ -121,9 +121,9 @@ void write_compare(FILE *s, Network *network, Network *save) {
 
    fprintf(s, "B: %d\n", B);
    for (int i = 0; i < 10; i++) {
-      float min = i * 0.1, max = min + 0.1;
+      double min = i * 0.1, max = min + 0.1;
 
-      float acc = 0, acc_weight = 0;
+      double acc = 0, acc_weight = 0;
       for (int i = 0; i < network->n; i++) {
          for (int j = save->n / 2; j < save->n; j++) {
             acc_weight++;
@@ -233,13 +233,15 @@ void ring_lattice(char *path, int K) {
    fclose(p);
 }
 
-void beta_simulation(char *path, float beta) {
+void beta_simulation(char *path, double beta) {
    dir("study1/%s_%f", path, beta);
    FILE *o = open("study1/%s_%f/overlap.dat", path, beta);
    FILE *lo = open("study1/%s_%f/local_overlap.dat", path, beta);
+   FILE *m = open("study1/%s_%f/matrix.dat", path, beta);
 
    Network *network = create_network(100, 0.05);
    watts_strogatz(network, 4.0, 0.2, 4, beta);
+   write_weights(m, network);
 
    long double interval = 100.0;
    for (unsigned long long int t = 0; t < 100e7; t++) {
@@ -258,6 +260,7 @@ void beta_simulation(char *path, float beta) {
 
    fclose(lo);
    fclose(o);
+   fclose(m);
 }
 
 // Study 2
@@ -314,7 +317,7 @@ void contact(char *path, int r) {
 }
 
 // Study 3
-void communities(char *path, bool rand, float l1, float l2) {
+void communities(char *path, bool rand, double l1, double l2) {
    dir("study3/%s_%.3f_%.3f", path, l1, l2);
    dir("study3/%s_%.3f_%.3f/dump", path, l1, l2);
    FILE *o = open("study3/%s_%.3f_%.3f/overlap.dat", path, l1, l2);
@@ -365,8 +368,10 @@ int main(int argc, char **argv) {
    // ring_lattice("ring_lattice", 4);
    // ring_lattice("ring_lattice", 6);
    // ring_lattice("ring_lattice", 8);
+   double beta = 0.0001;
    for (int i = 0; i <= 10; i++) {
-      beta_simulation("beta", ((float)i) / 10.0);
+      beta_simulation("beta", beta);
+      beta *= 2.5;
    }
 
    // study2
@@ -377,10 +382,10 @@ int main(int argc, char **argv) {
 
    // study3
    // dir("study3");
-   // float l1 = 0.0;
+   // double l1 = 0.0;
    // for (int i = 0; i < 3; i++) {
    //    l1 += 0.15;
-   //    float l2 = 0.0;
+   //    double l2 = 0.0;
    //    for (int j = 0; j < 3; j++) {
    //       l2 += 0.15;
    //       communities("communities", false, l1, l2);

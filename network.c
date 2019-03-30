@@ -9,13 +9,13 @@
 typedef struct {
    int n;
    Agent **nodes;
-   float **weights;
-   float dmin;
+   double **weights;
+   double dmin;
    int split_count;
 } Network;
 
 // Create a network of n isolated nodes
-Network *create_network(int n, float dmin) {
+Network *create_network(int n, double dmin) {
    Network *network = malloc(sizeof(Network));
    assert(network != NULL);
 
@@ -25,11 +25,11 @@ Network *create_network(int n, float dmin) {
       nodes[i] = create_agent();
    }
 
-   float **weights = malloc(n * sizeof(float*));
+   double **weights = malloc(n * sizeof(double*));
    assert(weights != NULL);
 
    for (int i = 0; i < n; i++) {
-      weights[i] = malloc(n * sizeof(float));
+      weights[i] = malloc(n * sizeof(double));
       assert(weights[i] != NULL);
 
       for (int j = 0; j < n; j++) {
@@ -41,10 +41,10 @@ Network *create_network(int n, float dmin) {
    return network;
 }
 
-// Generate float in range [0, 1)
-float frand(void) {
-   float f = ((float)rand()) / (((float)(RAND_MAX)) + 1.0);
-   return f >= 1.0 ? 0.0 : f;
+// Generate double in range [0, 1)
+double drand(void) {
+   double d = ((double)rand()) / (((double)(RAND_MAX)) + 1.0);
+   return d >= 1.0 ? 0.0 : d;
 }
 
 // Check if network already contains edge
@@ -53,14 +53,14 @@ bool contains_edge(Network *network, int i, int j) {
 }
 
 // Insert undirect edge with weight p
-void set_weight(Network *network, int i, int j, float w) {
+void set_weight(Network *network, int i, int j, double w) {
    assert(i != j); // no self loops
    network->weights[i][j] = w;
    network->weights[j][i] = w;
 }
 
 // Assign environment to agent i, mod if different name categories
-void assign_environment(Network *network, int i, float h, float t, bool mod) {
+void assign_environment(Network *network, int i, double h, double t, bool mod) {
    if (i < network->n / 2) {
       network->nodes[i]->name_mod = mod ?  -2 : -1;
       network->nodes[i]->h = h;
@@ -79,7 +79,7 @@ void assign_environment(Network *network, int i, float h, float t, bool mod) {
 }
 
 // Connect all nodes in a new network
-void make_complete(Network *network, float p) {
+void make_complete(Network *network, double p) {
    for (int i = 0; i < network->n; i++) {
       for (int j = i + 1; j < network->n; j++) {
          set_weight(network, i, j, p);
@@ -88,7 +88,7 @@ void make_complete(Network *network, float p) {
 }
 
 // Make new network linearly connected
-void make_linear(Network *network, float h, float t) {
+void make_linear(Network *network, double h, double t) {
    for (int i = 0; i < network->n; i++) {
       assign_environment(network, i, h, t, false);
 
@@ -99,7 +99,7 @@ void make_linear(Network *network, float h, float t) {
 }
 
 // Make two isolated populations (name_mod = -2, -3)
-void make_isolate(Network *network, float h, float t) {
+void make_isolate(Network *network, double h, double t) {
    for (int i = 0; i < network->n; i++) {
       assign_environment(network, i, h, t, true);
 
@@ -115,7 +115,7 @@ void make_isolate(Network *network, float h, float t) {
 }
 
 // Connect isolated populations (name_mod = -4)
-void reconnect(Network *network, float h, float t) {
+void reconnect(Network *network, double h, double t) {
    for (int i = 0; i < network->n; i++) {
       network->nodes[i]->h = h;
       network->nodes[i]->t = t;
@@ -127,14 +127,14 @@ void reconnect(Network *network, float h, float t) {
 }
 
 // Make new network into a small-world network using the Watts–Strogatz model
-void watts_strogatz(Network *network, float h, float t, int K, float beta) {
+void watts_strogatz(Network *network, double h, double t, int K, double beta) {
    for (int i = 0; i < network->n; i++) {
       assign_environment(network, i, h, t, false);
 
       for (int k = 0; k < K / 2; k++) {
          int j = (i + 1 + k) % network->n;
-         if (frand() <= beta) {
-            j = frand() * network->n;
+         if (drand() <= beta) {
+            j = drand() * network->n;
             while (j == i || contains_edge(network, i, j)) {
                j = (j + 1) % network->n;
             }
@@ -145,7 +145,7 @@ void watts_strogatz(Network *network, float h, float t, int K, float beta) {
 }
 
 // Sample from (h, t)-dist with inverse cummulative frequency transform
-float resample(float x, float h, float t) {
+double resample(double x, double h, double t) {
    if (h*t != 0.0 && h*t != 1.0) {
       if (x <= h * t) {
          x /= h;
@@ -159,8 +159,8 @@ float resample(float x, float h, float t) {
 }
 
 // Sigmoid like function
-float smootherstep(float x) {
-   const float eps = 0.000001;
+double smootherstep(double x) {
+   const double eps = 0.000001;
 
    x = x * x * x * (x * (x * 6.0 - 15.0) + 10.0);
    if (x <= eps) {
@@ -175,21 +175,21 @@ float smootherstep(float x) {
 }
 
 // Make one communication and optionally update weights, if rand the outcome of the communication is random
-void step(Network *network, int F, bool update_weight, bool rand, float l1, float l2) {
+void step(Network *network, int F, bool update_weight, bool rand, double l1, double l2) {
    int N = network->n;
 
-   int n = frand() * N; 
+   int n = drand() * N; 
    Agent *spk = network->nodes[n];
 
-   float cum[N]; // cummulative weights
+   double cum[N]; // cummulative weights
    cum[0] = network->weights[n][0];
    for (int i = 1; i < N; i++) {
       cum[i] = cum[i - 1] + network->weights[n][i];
    }
 
-   float p = 0;
+   double p = 0;
    while (p == 0) {
-      p = frand() * cum[N - 1];
+      p = drand() * (double)cum[N - 1];
    }
 
    int m = 0;
@@ -199,14 +199,14 @@ void step(Network *network, int F, bool update_weight, bool rand, float l1, floa
    Agent *lst = network->nodes[m];
 
    // generate stimuli
-   float a = frand(), b = frand();
+   double a = drand(), b = drand();
    while (fabs(a - b) <= network->dmin) {
-      b = frand();
+      b = drand();
    }
    a = resample(a, spk->h, spk->t);
    b = resample(b, spk->h, spk->t);
 
-   bool succ = rand ? frand() > 0.5 : negotiate(spk, lst, a, b, F, &network->split_count);
+   bool succ = rand ? drand() > 0.5 : negotiate(spk, lst, a, b, F, &network->split_count);
    if (update_weight) {
       network->weights[n][m] = smootherstep(network->weights[n][m] + (succ ? l1 : -l2));
       network->weights[m][n] = smootherstep(network->weights[m][n] + (succ ? l1 : -l2));
@@ -224,10 +224,10 @@ Network *clone_network(Network *network) {
       nodes[i] = clone_agent(network->nodes[i]);
    }
 
-   float **weights = malloc(n * sizeof(float*));
+   double **weights = malloc(n * sizeof(double*));
    assert(weights != NULL);
    for (int i = 0; i < n; i++) {
-      weights[i] = malloc(n * sizeof(float));
+      weights[i] = malloc(n * sizeof(double));
       assert(weights[i] != NULL);
       for (int j = 0; j < n; j++) {
          weights[i][j] = network->weights[i][j];

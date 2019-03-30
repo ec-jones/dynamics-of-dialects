@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*- 
 
 from __future__ import unicode_literals
+import networkx as nx
+import os
 import numpy as np
+import re
 import matplotlib.pyplot as plt
 
 def category_combined(path, N = 100):
@@ -91,21 +94,45 @@ def K_comparison(N = 100):
 def beta_comparison():
    fig = plt.figure()
    ax = fig.add_subplot(111)
+   ax.set_xscale('log')
+   ax.set_xlim([10e-5, 1])
    ax.set_xlabel('β')
    ax.set_ylabel('GLOR')
+
    glor = []
-   for i in range(0, 11):
-      b = i / 10.0
-      _, o = np.loadtxt('study1/beta_' + str(b) + '/overlap.dat', delimiter=' ', unpack=True)
-      _, lo = np.loadtxt('study1/beta_' + str(b) + '/local_overlap.dat', delimiter=' ', unpack=True)
-      o = np.mean(o[-3:])
-      lo = np.mean(lo[-3])
-      glor.append(o/lo)
+   path = []
+   clustering = []
+   beta = []
 
-   print(glor)
+   for dir in os.listdir('study1'):
+      m = re.match(r"beta_(0.[0-9][0-9]+)", dir)
+      try:
+         if m != None:
+            _, o = np.loadtxt('study1/' + dir + '/overlap.dat', delimiter=' ', unpack=True)
+            _, lo = np.loadtxt('study1/' + dir + '/local_overlap.dat', delimiter=' ', unpack=True)
+            matrix = np.loadtxt('study1/' + dir + '/matrix.dat', delimiter=' ')
+            G = nx.Graph()
+            for [i, j, w] in matrix:
+               if w > 0:
+                  G.add_edge(i, j, weight = w)
+            o = np.mean(o[-3:])
+            lo = np.mean(lo[-3])
+            glor.append(o/lo)
 
-   beta = np.linspace(0, 1, 11)
-   ax.scatter  (beta, glor)
+            clustering.append(nx.average_clustering(G, weight = 'weight', count_zeros = True))
+            path.append(nx.average_shortest_path_length(G, weight = 'weight'))
+
+            beta.append(float(m.groups(0)[0]))
+      except Exception as e:
+         print(e)
+
+   beta, glor, path, clustering = zip(*sorted(zip(beta, glor, path, clustering)))
+
+   print(path)
+   ax.scatter(beta, glor, label='GLOR')
+   ax.scatter(beta, path / path[0], label='L/L(0)')
+   ax.scatter(beta, clustering / clustering[0], label='C/C(0)')
+   ax.legend()
    plt.show()
 
 
