@@ -3,6 +3,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as stats
+from sklearn.mixture import GaussianMixture
 
 
 def read(line):
@@ -147,6 +148,11 @@ def lingcat():
 
 
 origA, origB, A, B = split()
+data = np.array((origA, origB)).flatten().reshape(-1, 1)
+gmm = GaussianMixture(n_components=5)
+gmm.fit(data)
+print(np.mean(gmm.covariances_.flatten() / gmm.means_.flatten()))
+
 print stats.spearmanr(origA, origB)
 edges = np.array((np.array(A)[:,[0,-1]],np.array(B)[:,[0,-1]])).flatten()
 inner = np.array((np.array(A)[:,[1,-2]],np.array(B)[:,[1,-2]])).flatten()
@@ -155,8 +161,8 @@ print np.mean(inner)
 print stats.ttest_ind(edges, inner, equal_var=False)
 
 fig, ax = plt.subplots(1, 1)
-ax.hist(origA, bins = 100, label='A')
-ax.hist(origB, bins = 100, label='B')
+ax.hist(origA, label='A')
+ax.hist(origB, label='B')
 ax.set_xlabel('Number of names')
 ax.set_ylabel('Frequency')
 ax.legend()

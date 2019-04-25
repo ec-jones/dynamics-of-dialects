@@ -35,6 +35,7 @@ for dir0 in os.listdir('study3'):
          
          T = []
          modularity = []
+         count = []
          for dir in os.listdir('study3/' + dir0 + '/dump'):
             m = re.match(r"([0-9]+)\.dat", dir)
             if m != None:
@@ -42,16 +43,21 @@ for dir0 in os.listdir('study3'):
                G = nx.read_weighted_edgelist(fh)
                fh.close()
                partition = community.best_partition(G)
+               print([int(k) for k in partition.keys()])
+               print(np.unique([int(k) for k in partition.keys()]))
+               print(len(np.unique([int(k) for k in partition.keys()])))
+               count.append(len(np.unique([int(k) for k in partition.keys()])))
                modularity.append(community.modularity(partition, G))
                T.append(int(m.groups(0)[0])) 
 
-         [T, modularity] = list(zip(*sorted(zip(T, modularity))))
+         [T, modularity, count] = list(zip(*sorted(zip(T, modularity, count))))
 
          axes[i ,j].set_xscale('log')
-         axes[i ,j].set_ylim([-0.1, 1])
+         #axes[i ,j].set_ylim([-0.1, 1])
          axes[i ,j].set_ylabel('Modularity')
          axes[i ,j].set_xlabel('Games per player')
-         axes[i ,j].plot(np.array(T) / 100, np.array(modularity))
+         #axes[i ,j].plot(np.array(T) / 100, np.array(modularity))
+         axes[i ,j].plot(np.array(T) / 100, np.array(count) / np.max(count))
 
          # axes[i ,j].set_xscale('log')
          # axes[i ,j].set_ylim([0, 1])

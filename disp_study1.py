@@ -7,38 +7,182 @@ import os
 import numpy as np
 import re
 import matplotlib.pyplot as plt
+import scipy.interpolate as interpolate
 
-def category_combined(path, N = 100):
-   x, y = np.loadtxt(path + '/percat.dat', delimiter=' ', unpack=True)
+def average(path, local = False, categories = False, runs = 10):   
+   lingcat = []
+   percat = []
+   overlap = []
+   local_overlap = []
+   GLOR = []
+   for i in range(1, runs):
+      try:
+         run = 'run_%d' % i
+         if categories:
+            l = np.loadtxt(path +'/' + run + '/lingcat.dat', delimiter=' ')
+            p = np.loadtxt(path +'/' + run + '/percat.dat', delimiter=' ')
+            lingcat.append(l)
+            percat.append(p)
+         o = np.loadtxt(path +'/' + run + '/overlap.dat', delimiter=' ')
+         if local:
+            lo = np.loadtxt(path +'/' + run + '/local_overlap.dat', delimiter=' ')
+            local_overlap.append(lo)
+            GLOR.append([[o[i][0], o[i][1] / lo[i][1]] for i in range(len(o))])
+         overlap.append(o)
+      except:
+         pass
 
+   # trans = []
+   # for i in range(0, 10):
+   #    diff = (np.array(percat[i]) - np.array(lingcat[i]))[:,1].flatten()
+   #    trans.append([i for i, d in enumerate(diff) if d > 1][0])
+   # trans = lingcat[0][trans][:, 0]
+   # print np.min(trans)
+   # print np.mean(trans)
+   # print np.max(trans)
+   if not os.path.exists(path + '/run_avg'):
+      os.mkdir(path + '/run_avg')
+      os.mkdir(path + '/run_err')
+
+   if categories:
+      np.savetxt(path + '/run_avg/lingcat.dat', np.mean(lingcat, axis=0), delimiter=' ')
+      np.savetxt(path + '/run_avg/percat.dat', np.mean(percat, axis=0), delimiter=' ')
+      np.savetxt(path + '/run_err/lingcat.dat', np.sqrt(np.var(lingcat, axis=0)), delimiter=' ')
+      np.savetxt(path + '/run_err/percat.dat', np.sqrt(np.var(percat, axis=0)), delimiter=' ')
+   
+   np.savetxt(path + '/run_avg/overlap.dat', np.mean(overlap, axis=0), delimiter=' ')
+   np.savetxt(path + '/run_err/overlap.dat', np.sqrt(np.var(overlap, axis=0)), delimiter=' ')
+
+   if local:
+      # print np.min([g[-1] for g in GLOR])
+      # print np.mean(GLOR, axis = 0)[-1]
+      # print np.max([g[-1] for g in GLOR])
+
+      np.savetxt(path + '/run_avg/local_overlap.dat', np.mean(local_overlap, axis=0), delimiter=' ')
+      np.savetxt(path + '/run_avg/GLOR.dat', np.mean(GLOR, axis = 0), delimiter = ' ')
+
+      np.savetxt(path + '/run_err/local_overlap.dat', np.sqrt(np.var(local_overlap, axis=0)), delimiter=' ')
+      np.savetxt(path + '/run_err/GLOR.dat', np.sqrt(np.var(GLOR, axis=0)), delimiter=' ')
+
+def category_combined(path, N = 100, error = False):
+   fig = plt.figure()
+   ax = fig.add_subplot(111)
+   ax.set_xscale('log')
+   ax.set_yscale('log')
+   ax.set_xlim([10e0, 10e6])
+   ax.set_xlabel('Games per player')
+   ax.set_ylabel('Categories')
+
+   x, y = np.loadtxt(path + '/run_avg/percat.dat', delimiter=' ', unpack=True)
+   if error:
+      _, yerr = np.loadtxt(path + '/run_err/percat.dat', delimiter=' ', unpack=True)
+      for i in range(0, len(yerr)):
+         if i % 10 != 0:
+            yerr[i] = 0
+      ax.errorbar(x/N, y, yerr = yerr, label='Perceptual categories')
+   else: 
+      ax.plot(x/N, y, label='Perceptual categories')
+
+   x, y = np.loadtxt(path + '/run_avg/lingcat.dat', delimiter=' ', unpack=True)
+   if error:
+      _, yerr = np.loadtxt(path + '/run_err/lingcat.dat', delimiter=' ', unpack=True)
+      for i in range(0, len(yerr)):
+         if i % 10 != 0:
+            yerr[i] = 0
+      ax.errorbar(x/N, y, yerr = yerr, label='Linguistic categories')
+   else: 
+      ax.plot(x/N, y, label='Linguistic categories')
+
+   ax.legend()
+   plt.show()
+
+def overlap_combined(path, N = 100, local = True, error = False):
    fig = plt.figure()
    ax = fig.add_subplot(111)
    ax.set_xscale('log')
    ax.set_xlim([10e0, 10e6])
-   ax.set_xlabel('Games per player')
-   ax.set_ylabel('Categories')
-   ax.plot(x/N, y, label='Perceptual categories')
-
-   x, y = np.loadtxt( path + '/lingcat.dat', delimiter=' ', unpack=True)
-   ax.plot(x/N, y, label='Linguistic categories')
-   ax.legend()
-   plt.show()
-
-def overlap_combined(path, N = 100):
-   x, y = np.loadtxt(path + '/overlap.dat', delimiter=' ', unpack=True)
-
-   fig = plt.figure()
-   ax = fig.add_subplot(111)
-   #ax.set_xscale('log')
-   ax.set_xlim([10e0, 10e6])
    ax.set_ylim([0, 1])
    ax.set_xlabel('Games per player')
    ax.set_ylabel('Overlap')
-   ax.plot(x/N, y, label='Global overlap')
 
-   x, y = np.loadtxt( path + '/local_overlap.dat', delimiter=' ', unpack=True)
-   ax.plot(x/N, y, label='Local overlap')
-   ax.legend()
+   x, y = np.loadtxt(path + '/run_avg/overlap.dat', delimiter=' ', unpack=True)
+   if error:
+      _, yerr = np.loadtxt(path + '/run_err/overlap.dat', delimiter=' ', unpack=True)
+      for i in range(0, len(yerr)):
+         if i % 10 != 0:
+            yerr[i] = 0
+      ax.errorbar(x/N, y, yerr = yerr, label='Global overlap')
+   else: 
+      ax.plot(x/N, y, label='Global overlap')
+
+   if local:
+      x, y = np.loadtxt( path + '/run_avg/local_overlap.dat', delimiter=' ', unpack=True)
+      if error:
+         _, yerr = np.loadtxt(path + '/run_err/local_overlap.dat', delimiter=' ', unpack=True)
+         for i in range(0, len(yerr)):
+            if i % 10 != 0:
+               yerr[i] = 0
+         ax.errorbar(x/N, y, yerr = yerr, label='Local overlap')
+      else: 
+         ax.plot(x/N, y, label='Local overlap')
+      ax.legend()
+   plt.show()
+
+def ht_plot(delta = 100, hmax = 10):
+   H = []
+   T = []
+   GLOR = []
+   Z = float('nan')
+   for d in os.listdir('study1/linear_network'):
+      m = re.match(r'h=([0-9\.]+)t=([0-9\.]+)', d)
+      if m != None:
+         h = float(m.group(1))
+         t = float(m.group(2))
+         H.append(h)
+         T.append(t)
+
+         average('study1/linear_network/' + d, local = True, runs = 5)
+         _, g = np.loadtxt('study1/linear_network/' + d + '/run_avg/GLOR.dat', delimiter=' ', unpack=True)
+         GLOR.append(g[-1])
+
+         if h == 0 and t == 0:
+            Z = g[-1]
+
+         idxs = [i for i in range(len(H)) if H[i] == ((1- h * t) / (1 - t)) and T[i] == 1 - t]
+         if idxs != []:
+            GLOR[i] += g[-1]
+            GLOR[i] /= 2
+         else:
+            H.append((1- h * t) / (1 - t))
+            T.append(1 - t)
+            GLOR.append(g[-1])
+
+   for r in np.linspace(0, 1, delta):
+      H.append(r)
+      T.append(0)
+      GLOR.append(Z)
+
+      H.append(1)
+      T.append(r)
+      GLOR.append(Z)
+
+   t, h = np.mgrid[0:1:100j, 0:hmax:100j]
+   grid = interpolate.griddata((T, H), GLOR, (t, h), method='linear')
+   for i in range(delta):
+      for j in range(delta):
+         if h[i, j] * t[i, j] > 1:
+            grid[i, j] = float('nan')
+
+
+   fig = plt.figure()
+   ax = fig.add_subplot(111)
+   ax.set_xlabel('t')
+   ax.set_ylabel('h')
+   ax.set_xlim([0.1, 0.9])
+   ax.set_ylim([0, 9])
+
+   cf = ax.contourf(t, h, grid)
+   fig.colorbar(cf, ax=ax)
    plt.show()
 
 def F_comparison(N = 100):
@@ -73,25 +217,36 @@ def F_comparison(N = 100):
 def K_comparison(N = 100):
    fig = plt.figure()
    ax = fig.add_subplot(111)
-   #ax.set_xscale('log')
+   ax.set_xscale('log')
    ax.set_xlim([10e0, 10e6])
    ax.set_xlabel('Games per player')
    ax.set_ylabel('GLOR')
-   K = 2
-   while K < 20:
-      try:
-         T, o = np.loadtxt('study1/ring_lattice_' + str(K) + '/overlap.dat', delimiter=' ', unpack=True)
-         _, lo = np.loadtxt('study1/ring_lattice_' + str(K) + '/local_overlap.dat', delimiter=' ', unpack=True)
 
-         ax.plot(T/N, o/lo, label='F = ' + str(K))
-      except:
-         pass
-      K += 2
+   for d in os.listdir('study1/ring_lattice'):
+      average('study1/ring_lattice/' + d, local = True, runs = 5)
+      m = re.match(r'K=([0-9])', d)
+      if m != None:
+         k = int(m.group(1))
 
+         # T, o = np.loadtxt('study1/ring_lattice/' + d + '/run_avg/overlap.dat', delimiter=' ', unpack=True)
+         # _, oerr = np.loadtxt('study1/ring_lattice/' + d + '/run_err/overlap.dat', delimiter=' ', unpack=True)
+         T, lo = np.loadtxt('study1/ring_lattice/' + d + '/run_avg/local_overlap.dat', delimiter=' ', unpack=True)
+         _, loerr = np.loadtxt('study1/ring_lattice/' + d + '/run_err/local_overlap.dat', delimiter=' ', unpack=True)
+         # _, g = np.loadtxt('study1/ring_lattice/' + d + '/run_avg/GLOR.dat', delimiter=' ', unpack=True)
+         # _, gerr = np.loadtxt('study1/ring_lattice/' + d + '/run_err/GLOR.dat', delimiter=' ', unpack=True)
+         for i in range(0, len(T)):
+            if i % 10 != 0:
+               # oerr[i] = 0
+               loerr[i] = 0
+               # gerr[i] = 0
+         # ax.errorbar(T / N, g, yerr=gerr, label = 'K = %d' % k)
+         # ax.errorbar(T / N, o, yerr=oerr, label = 'K = %d' % k)
+         ax.errorbar(T / N, lo, yerr=loerr, label = 'K = %d' % k)
    ax.legend()
    plt.show()
 
 def beta_comparison():
+   average('study1/small_world_network', local = True)
    fig = plt.figure()
    ax = fig.add_subplot(111)
    ax.set_xscale('log')
@@ -104,13 +259,13 @@ def beta_comparison():
    clustering = []
    beta = []
 
-   for dir in os.listdir('study1'):
+   for dir in os.listdir('study1/small_world_network'):
       m = re.match(r"beta_(0.[0-9][0-9]+)", dir)
       try:
          if m != None:
-            _, o = np.loadtxt('study1/' + dir + '/overlap.dat', delimiter=' ', unpack=True)
-            _, lo = np.loadtxt('study1/' + dir + '/local_overlap.dat', delimiter=' ', unpack=True)
-            matrix = np.loadtxt('study1/' + dir + '/matrix.dat', delimiter=' ')
+            _, o = np.loadtxt('study1/small_world_network/' + dir + '/run_0/overlap.dat', delimiter=' ', unpack=True)
+            _, lo = np.loadtxt('study1/small_world_network/' + dir + '/run_0/local_overlap.dat', delimiter=' ', unpack=True)
+            matrix = np.loadtxt('study1/small_world_network/' + dir + '/run_0/matrix.dat', delimiter=' ')
             G = nx.Graph()
             for [i, j, w] in matrix:
                if w > 0:
@@ -128,16 +283,18 @@ def beta_comparison():
 
    beta, glor, path, clustering = zip(*sorted(zip(beta, glor, path, clustering)))
 
-   print(path)
-   ax.scatter(beta, glor, label='GLOR')
-   ax.scatter(beta, path / path[0], label='L/L(0)')
-   ax.scatter(beta, clustering / clustering[0], label='C/C(0)')
+   ax.plot(beta, glor, label='GLOR')
+   ax.plot(beta, path / path[0], label='L/L(0)')
+   ax.plot(beta, clustering / clustering[0], label='C/C(0)')
    ax.legend()
    plt.show()
 
+# average('study1/linear_network', local = True)
+# category_combined('study1/linear_network', error = True)
+# overlap_combined('study1/linear_network', local = True, error = True)
 
-#category_combined('study1/linear_network')
-#overlap_combined('study1/linear_network')
-# F_comparison()
+# ht_plot()
+
 # K_comparison()
+
 beta_comparison()

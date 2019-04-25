@@ -6,6 +6,8 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <assert.h>
+#include <math.h>
+#include <pthread.h>
 #include "network.h"
 
 // Create a formatted director
@@ -71,39 +73,58 @@ void write_weights(FILE *f, Network *network) {
 }
 
 // Extract the number of names mod 3
-void names(Network *network, int *A, int *B, int *C) {
-   *A = 0, *B = 0, *C = 0;
-   for (int i = 0; i < network->n; i++) {
-      Category *cat = left_most(network->nodes[i]->tree);
+// void names(Network *network, int *A, int *B, int *C) {
+//    int As[1000], Bs[1000], Cs[1000];
+//    *A = 0, *B = 0, *C = 0;
+//    for (int i = 0; i < network->n; i++) {
+//       Category *cat = left_most(network->nodes[i]->tree);
 
-      while(cat != NULL) {
+//       while(cat != NULL) {
 
-         if (cat->head != NULL &&
-               (cat->next == NULL ||
-               (cat->next->head != NULL && peek(cat) != peek(cat->next)))) {
+//          if (cat->head != NULL &&
+//                (cat->next == NULL ||
+//                (cat->next->head != NULL && peek(cat) != peek(cat->next)))) {
             
-            switch (peek(cat) % 3) {
-               case 0:
-                  ++*A;
-                  break;
-               case 1:
-                  ++*B;
-                  break;
-               case 2:
-                  ++*C;
-                  break;
-            }
-         }
-
-         cat = cat->next;
-      }
-   }
-}
+//             int name = peek(cat);
+//             switch (name % 3) {
+//                case 0:
+//                   for (int j = 0; j < A*; j++) {
+//                      if (As[j] == name) {
+//                         break;
+//                      }
+//                   }
+//                   As[*A] = peek(cat);
+//                   ++*A;
+//                   break;
+//                case 1:
+//                   for (int j = 0; j < B*; j++) {
+//                      if (Bs[j] == name) {
+//                         break;
+//                      }
+//                   }
+//                   Bs[*B] = peek(cat);
+//                   ++*B;
+//                   break;
+//                case 2:
+//                   for (int j = 0; j < C*; j++) {
+//                      if (Cs[j] == name) {
+//                         break;
+//                      }
+//                   }
+//                   Cs[*C] = peek(cat);
+//                   ++*C;
+//                   break;
+//             }
+//          }
+//          cat = cat->next;
+//       }
+//    }
+// }
 
 // Compare a saved population to the current network
 void write_compare(FILE *s, Network *network, Network *save) {
    int A, B, C;
-   names(network, &A, &B, &C);
+   //names(network, &A, &B, &C);
 
    fprintf(s, "A: %d\n", A);
    for (int i = 0; i < 10; i++) {
@@ -136,13 +157,14 @@ void write_compare(FILE *s, Network *network, Network *save) {
    fprintf(s, "C: %d\n", C);
 }
 
-// Core
-void core(char *path) {
-   FILE *p = open("%s/percat.dat", path);
-   FILE *l = open("%s/lingcat.dat", path);
-   FILE *o = open("%s/overlap.dat", path);
+// The core model with default parameters
+void study0(int i) {
+   dir("study0/run_%d", i);
+   FILE *p = open("study0_%d/percat.dat", i);
+   FILE *l = open("study0_%d/lingcat.dat", i);
+   FILE *o = open("study0_%d/overlap.dat", i);
 
-   Network *network = create_network(100, 0.05);
+   Network *network = create_network(100, 0.01);
    make_complete(network, 1);
 
    long double interval = 100.0;
@@ -166,49 +188,15 @@ void core(char *path) {
    fclose(p);
 }
 
-// Study1
-void linear_network(char *path, int F) {
-   dir("study1/%s_%d", path, F);
-   FILE *p = open("study1/%s_%d/percat.dat", path, F);
-   FILE *l = open("study1/%s_%d/lingcat.dat", path, F);
-   FILE *o = open("study1/%s_%d/overlap.dat", path, F);
-   FILE *lo = open("study1/%s_%d/local_overlap.dat", path, F);
+void linear_network(int i, double h, double t) {
+   dir("study1/linear_network/h=%ft=%f/run_%d", h, t, i);
+   FILE *p = open("study1/linear_network/h=%ft=%f/run_%d/percat.dat", h, t, i);
+   FILE *l = open("study1/linear_network/h=%ft=%f/run_%d/lingcat.dat", h, t, i);
+   FILE *o = open("study1/linear_network/h=%ft=%f/run_%d/overlap.dat", h, t, i);
+   FILE *lo = open("study1/linear_network/h=%ft=%f/run_%d/local_overlap.dat", h, t, i);
 
-   Network *network = create_network(100, 0.05);
-   make_linear(network, 0, 0);
-
-   long double interval = 100.0;
-   for (unsigned long long int t = 0; t < 100e7; t++) {
-      step(network, F, false, false, 0.0, 0.0);
-
-      if (t >= interval) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
-         interval *= 1.1;
-         printf("Running: %Lf%%\n", t / 100e7 * 100.0l);
-
-         write_percat(p, network, t);
-         write_lingcat(l, network, t);
-         write_overlap(o, network, t, true, false);
-         write_overlap(lo, network, t, true, true);
-      }
-   }
-
-   delete_network(network);
-
-   fclose(lo);
-   fclose(o);
-   fclose(l);
-   fclose(p);
-}
-
-void ring_lattice(char *path, int K) {
-   dir("study1/%s_%d", path, K);
-   FILE *p = open("study1/%s_%d/percat.dat", path, K);
-   FILE *l = open("study1/%s_%d/lingcat.dat", path, K);
-   FILE *o = open("study1/%s_%d/overlap.dat", path, K);
-   FILE *lo = open("study1/%s_%d/local_overlap.dat", path, K);
-
-   Network *network = create_network(100, 0.05);
-   watts_strogatz(network, 4.0, 0.2, K, 0.0);
+   Network *network = create_network(100, 0.01);
+   make_linear(network, h, t);
 
    long double interval = 100.0;
    for (unsigned long long int t = 0; t < 100e7; t++) {
@@ -233,14 +221,60 @@ void ring_lattice(char *path, int K) {
    fclose(p);
 }
 
-void beta_simulation(char *path, double beta) {
-   dir("study1/%s_%f", path, beta);
-   FILE *o = open("study1/%s_%f/overlap.dat", path, beta);
-   FILE *lo = open("study1/%s_%f/local_overlap.dat", path, beta);
-   FILE *m = open("study1/%s_%f/matrix.dat", path, beta);
+void ring_lattice(int K, int i) {
+   dir("study1/ring_lattice/K=%d/", K);
+   dir("study1/ring_lattice/K=%d/run_%d", K, i);
+   FILE *p = open("study1/ring_lattice/K=%d/run_%d/percat.dat", K, i);
+   FILE *l = open("study1/ring_lattice/K=%d/run_%d/lingcat.dat", K, i);
+   FILE *o = open("study1/ring_lattice/K=%d/run_%d/overlap.dat", K, i);
+   FILE *lo = open("study1/ring_lattice/K=%d/run_%d/local_overlap.dat", K, i);
+
+   Network *network = create_network(100, 0.01);
+   watts_strogatz(network, 2.0, 0.5, K, 0.0);
+
+   long double interval = 100.0;
+   for (unsigned long long int t = 0; t < 100e7; t++) {
+      step(network, -1, false, false, 0.0, 0.0);
+
+      if (t >= interval) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+         interval *= 1.1;
+         printf("Running: %Lf%%\n", t / 100e7 * 100.0l);
+
+         write_percat(p, network, t);
+         write_lingcat(l, network, t);
+         write_overlap(o, network, t, true, false);
+         write_overlap(lo, network, t, true, true);
+      }
+   }
+
+   delete_network(network);
+
+   fclose(lo);
+   fclose(o);
+   fclose(l);
+   fclose(p);
+}
+
+struct beta_args {
+    double beta;
+    int i;
+};
+
+void *beta_simulation(void *args) {
+   double beta = ((struct beta_args*)args)->beta;
+   int i = ((struct beta_args*)args)->i;
+   if (beta > 1.0) {
+      beta = 1.0;
+   }
+   printf("%f %d\n", beta, i);
+   dir("study1/small_world_network/beta_%f", beta);
+   dir("study1/small_world_network/beta_%f/run_%d", beta, i);
+   FILE *o = open("study1/small_world_network/beta_%f/run_%d/overlap.dat", i, beta);
+   FILE *lo = open("study1/small_world_network/beta_%f/run_%d/local_overlap.dat", i, beta);
+   FILE *m = open("study1/small_world_network/beta_%f/run_%d/matrix.dat", i, beta);
 
    Network *network = create_network(100, 0.05);
-   watts_strogatz(network, 4.0, 0.2, 4, beta);
+   watts_strogatz(network, 4.0, 0.2, 6, beta);
    write_weights(m, network);
 
    long double interval = 100.0;
@@ -261,6 +295,63 @@ void beta_simulation(char *path, double beta) {
    fclose(lo);
    fclose(o);
    fclose(m);
+
+   return 0;
+}
+
+void study1(int section) {
+   dir("study1");
+
+   if (section & 2) {
+      for (int i = 0; i < 10; i++) {
+         linear_network(i, 0, 0);
+      }
+   }
+
+   if (section & 4) {
+      for (int i = 0; i < 5; i++) {
+         for (double t = 0.2; t < 0.9; t += 0.1) {
+            double h = 1.0 / t;
+            dir("study1/linear_network/h=%ft=%f", h, t);
+            linear_network(i, h, t);
+
+            h = 0.5 / t;
+            dir("study1/linear_network/h=%ft=%f", h, t);
+            linear_network(i, h, t);
+         }
+      }
+   }
+
+   if (section & 8) {
+      dir("study1/ring_lattice");
+      for (int i = 0; i < 10; i++) {
+         ring_lattice(2, i);
+         ring_lattice(4, i);
+         ring_lattice(6, i);
+         ring_lattice(8, i);
+      }
+   }
+
+   if (section & 16) {
+      dir("study1/small_world_network");
+
+      pthread_t threads[90];
+      struct beta_args thread_args[90];
+      for (int i = 0; i < 90; i++) {
+         thread_args[i] = (struct beta_args){(double)(0.0001 * pow(2.8, i % 10)), (i / 10) + 1};
+         pthread_create(&threads[i], NULL, beta_simulation, &thread_args[i]);
+      }
+
+      for (int i = 0; i < 90; i++) {
+         pthread_join(threads[i], NULL);
+      }
+
+      // for (int i = 0; i < 10; i++) {
+      //    for (double beta = 0.0001; beta < 1.0; beta *= 1.15) {
+      //       beta_simulation(beta, i);
+      //    }
+      // }
+   }
 }
 
 // Study 2
@@ -351,28 +442,19 @@ void communities(char *path, bool rand, double l1, double l2) {
 
 // Entry point
 int main(int argc, char **argv) {
+   setbuf(stdout,NULL);
+
    time_t t;
    srand((unsigned) time(&t));
    clock_t begin = clock();
 
-   // core
-   // dir("core");
-   // core("core");
-
-   // study1
-   dir("study1");
-   // for (int F = 30; F > 5; F /= 2) {
-   //    linear_network("linear_network", F);
+   // study0
+   // dir("study0");
+   // for (int i = 0; i < 10; i++) {
+   //    study0(i);
    // }
-   // ring_lattice("ring_lattice", 2);
-   // ring_lattice("ring_lattice", 4);
-   // ring_lattice("ring_lattice", 6);
-   // ring_lattice("ring_lattice", 8);
-   double beta = 0.0001;
-   for (int i = 0; i <= 10; i++) {
-      beta_simulation("beta", beta);
-      beta *= 2.5;
-   }
+
+   study1(16);
 
    // study2
    // dir("study2");
