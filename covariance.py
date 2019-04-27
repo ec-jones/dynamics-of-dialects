@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 from sklearn.mixture import GaussianMixture
+from scipy import optimize
 
 
 def read(line):
@@ -14,29 +15,30 @@ def contact_env():
    origB = []
    A = []
    B = []
-   for dir0 in os.listdir('study2'):
-      m = re.match(r"contact_env2_[0-9]+", dir0)
+   for i in range(0, 10):
+      run = 'run_%d' % i
+      path = 'study2/non_uniform_A/' + run + '/'
       try:
-         if m != None:
-            i = 0
-            f_A = []
-            f_B = []
-            with open('study2/' + dir0 + '/split.dat') as f:
-               for line in f:
-                  if i == 0:
-                     origA.append(float(line[3:-1]))
-                  elif i == 11:
-                     origB.append(float(line[3:-1]))
-                  elif 1 <= i <= 10:
-                     f_A.append(read(line))
-                  elif 12 <= i <= 21:
-                     f_B.append(read(line))
-                  i += 1
-            if f_A != [] and f_B != []:
-               A.append(np.array(f_A))
-               B.append(np.array(f_B))
+         f_A = []
+         f_B = []
+         k = 0
+         with open('study2/' + dir0 + '/split.dat') as f:
+            for line in f:
+               if k == 0:
+                  origA.append(float(line[3:-1]))
+               elif k == 21:
+                  origB.append(float(line[3:-1]))
+               elif 1 <= k <= 20:
+                  f_A.append(read(line))
+               elif 22 <= k <= 41:
+                  f_B.append(read(line))
+               k += 1
+         if f_A != [] and f_B != []:
+            A.append(np.array(f_A))
+            B.append(np.array(f_B))
       except:
          pass
+
    return origA, origB, A, B
 
 def split():
@@ -44,27 +46,27 @@ def split():
    origB = []
    A = []
    B = []
-   for dir0 in os.listdir('study2'):
-      m = re.match(r"contact_[0-9]+", dir0)
+   for i in range(0, 10):
+      run = 'run_%d' % i
+      path = 'study2/non_uniform_A/' + run + '/'
       try:
-         if m != None:
-            i = 0
-            f_A = []
-            f_B = []
-            with open('study2/' + dir0 + '/split.dat') as f:
-               for line in f:
-                  if i == 0:
-                     origA.append(float(line[3:-1]))
-                  elif i == 11:
-                     origB.append(float(line[3:-1]))
-                  elif 1 <= i <= 10:
-                     f_A.append(read(line))
-                  elif 12 <= i <= 21:
-                     f_B.append(read(line))
-                  i += 1
-            if f_A != [] and f_B != []:
-               A.append(np.array(f_A))
-               B.append(np.array(f_B))
+         f_A = []
+         f_B = []
+         j = 0
+         with open(path + 'split.dat') as f:
+            for line in f:
+               if j == 0:
+                  origA.append(float(line[3:-1]))
+               elif j == 21:
+                  origB.append(float(line[3:-1]))
+               elif 1 <= j <= 20:
+                  f_A.append(read(line))
+               elif 22 <= j<= 41:
+                  f_B.append(read(line))
+               j += 1
+         if f_A != [] and f_B != []:
+            A.append(np.array(f_A))
+            B.append(np.array(f_B))
       except:
          pass
    return origA, origB, A, B
@@ -131,44 +133,63 @@ def lingcat():
    ax2.set_ylabel('Linguistic category')
    plt.show()
 
+origA, origB, A, B = split()
 
-# origA, origB, A, B = contact_env()
-# print(np.mean(origA))
-# print(np.mean(origB))
-# W = np.linspace(0, 1, 10)
-# fig, ax = plt.subplots(1, 1)
-# ax.plot(W, np.mean(A, axis=0), label='Overlap between A and C')
-# ax.plot(W, np.mean(B, axis=0), label='Overlap between B and C')
-# ax.set_ylabel('Overlap')
-# ax.set_xlabel('Stimuli')
-# ax.legend()
-# plt.show()
+M = np.zeros(20)
+for i in range(0, 20):
+   if i >= 1:
+      if i <= 18:
+         M[i] = (np.mean(A, axis=0)[i-1]+ np.mean(A, axis=0)[i+1])/2 
+      else:
+         M[i] = np.mean(A, axis=0)[i-1]
+   else:
+      M[i] = np.mean(A, axis=0)[i+1]
+
+N = np.zeros(20)
+for i in range(0, 20):
+   if i >= 1:
+      if i <= 18:
+         N[i] = (np.mean(B, axis=0)[i-1]+ np.mean(A, axis=0)[i+1])/2 
+      else:
+         N[i] = np.mean(B, axis=0)[i-1]
+   else:
+      N[i] = np.mean(B, axis=0)[i+1]
+
+print stats.pearsonr(np.array([np.mean(A, axis=0)[4:-5] ,np.mean(B, axis=0)[4:-5]]).flatten(), np.array([M[4:-5] ,N[4:-5]]).flatten())
+print stats.ttest_1samp(origB, 0.5)
+print(np.mean(origA))
+print(np.mean(origB))
+W = np.linspace(0, 1, 20)
+fig, ax = plt.subplots(1, 1)
+ax.plot(W, np.mean(A, axis=0), label = 'Overlap between A and C')
+ax.plot(W, np.mean(B, axis=0), label = 'Overlap between B and C')
+ax.plot(W, np.mean(A, axis=0) + np.mean(B, axis=0), label = ' Total')
+ax.set_ylabel('Overlap')
+ax.set_xlabel('Stimuli')
+ax.set_ylim([0, 1.1])
+ax.legend()
+plt.show()
 
 # local_overlap()
 
 
-origA, origB, A, B = split()
-data = np.array((origA, origB)).flatten().reshape(-1, 1)
-gmm = GaussianMixture(n_components=5)
-gmm.fit(data)
-print(np.mean(gmm.covariances_.flatten() / gmm.means_.flatten()))
+# origA, origB, A, B = split()
 
-print stats.spearmanr(origA, origB)
-edges = np.array((np.array(A)[:,[0,-1]],np.array(B)[:,[0,-1]])).flatten()
-inner = np.array((np.array(A)[:,[1,-2]],np.array(B)[:,[1,-2]])).flatten()
-print np.mean(edges)
-print np.mean(inner)
-print stats.ttest_ind(edges, inner, equal_var=False)
+# edges = np.array((np.array(A)[:,[0,-1]],np.array(B)[:,[0,-1]])).flatten()
+# inner = np.array((np.array(A)[:,[1,-2]],np.array(B)[:,[1,-2]])).flatten()
+# print np.mean(edges)
+# print np.mean(inner)
+# print stats.ttest_ind(edges, inner, equal_var=False)
 
-fig, ax = plt.subplots(1, 1)
-ax.hist(origA, label='A')
-ax.hist(origB, label='B')
-ax.set_xlabel('Number of names')
-ax.set_ylabel('Frequency')
-ax.legend()
-plt.show()
+# fig, ax = plt.subplots(1, 1)
+# ax.hist(origA, bins = 30)
+# ax.hist(origB, label='B', bins = 30)
+# ax.set_xlabel('Range of the perceptual space')
+# ax.set_xlim([0, 1])
+# ax.set_ylabel('Frequency')
+# plt.show()
 
-print stats.ttest_ind(origA, origB, equal_var=False)
+# print stats.ttest_ind(origA, origB, equal_var=False)
 
 """
 mu = 0.5 * (np.mean(np.array(A), axis=0) + np.mean(np.array(B), axis=0))

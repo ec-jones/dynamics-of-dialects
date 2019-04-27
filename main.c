@@ -73,62 +73,43 @@ void write_weights(FILE *f, Network *network) {
 }
 
 // Extract the number of names mod 3
-// void names(Network *network, int *A, int *B, int *C) {
-//    int As[1000], Bs[1000], Cs[1000];
-//    *A = 0, *B = 0, *C = 0;
-//    for (int i = 0; i < network->n; i++) {
-//       Category *cat = left_most(network->nodes[i]->tree);
-
-//       while(cat != NULL) {
-
-//          if (cat->head != NULL &&
-//                (cat->next == NULL ||
-//                (cat->next->head != NULL && peek(cat) != peek(cat->next)))) {
-            
-//             int name = peek(cat);
-//             switch (name % 3) {
-//                case 0:
-//                   for (int j = 0; j < A*; j++) {
-//                      if (As[j] == name) {
-//                         break;
-//                      }
-//                   }
-//                   As[*A] = peek(cat);
-//                   ++*A;
-//                   break;
-//                case 1:
-//                   for (int j = 0; j < B*; j++) {
-//                      if (Bs[j] == name) {
-//                         break;
-//                      }
-//                   }
-//                   Bs[*B] = peek(cat);
-//                   ++*B;
-//                   break;
-//                case 2:
-//                   for (int j = 0; j < C*; j++) {
-//                      if (Cs[j] == name) {
-//                         break;
-//                      }
-//                   }
-//                   Cs[*C] = peek(cat);
-//                   ++*C;
-//                   break;
-//             }
-//          }
-//          cat = cat->next;
-//       }
-//    }
-// }
+void names(Network *network, double *A, double *B, double *C) {
+   *A = 0.0, *B = 0.0, *C = 0.0;
+   for (int i = 0; i < network->n; i++) {
+      Category *cat = left_most(network->nodes[i]->tree);
+      double bottom = 0.0;
+      while(cat != NULL) {
+         if (cat->head != NULL) {
+            int name = peek(cat);
+            switch (name % 3) {
+               case 0:
+                  *A += cat->top - bottom;
+                  break;
+               case 1:
+                  *B += cat->top - bottom;
+                  break;
+               case 2:
+                  *C += cat->top - bottom;
+                  break;
+            }
+         }
+         bottom = cat->top;
+         cat = cat->next;
+      }
+   }
+   *A /= network->n;
+   *B /= network->n;
+   *C /= network->n;
+}
 
 // Compare a saved population to the current network
 void write_compare(FILE *s, Network *network, Network *save) {
-   int A, B, C;
-   //names(network, &A, &B, &C);
+   double A, B, C;
+   names(network, &A, &B, &C);
 
-   fprintf(s, "A: %d\n", A);
-   for (int i = 0; i < 10; i++) {
-      double min = i * 0.1, max = min + 0.1;
+   fprintf(s, "A: %f\n", A);
+   for (int i = 0; i < 20; i++) {
+      double min = i * 0.05, max = min + 0.05;
 
       double acc = 0, acc_weight = 0;
       for (int i = 0; i < network->n; i++) {
@@ -140,9 +121,9 @@ void write_compare(FILE *s, Network *network, Network *save) {
       fprintf(s, "%f %f\n", (min + max) / 2.0, acc / acc_weight);
    }
 
-   fprintf(s, "B: %d\n", B);
-   for (int i = 0; i < 10; i++) {
-      double min = i * 0.1, max = min + 0.1;
+   fprintf(s, "B: %f\n", B);
+   for (int i = 0; i < 20; i++) {
+      double min = i * 0.05, max = min + 0.05;
 
       double acc = 0, acc_weight = 0;
       for (int i = 0; i < network->n; i++) {
@@ -154,7 +135,7 @@ void write_compare(FILE *s, Network *network, Network *save) {
       fprintf(s, "%f %f\n", (min + max) / 2.0, acc / acc_weight);
    }
 
-   fprintf(s, "C: %d\n", C);
+   fprintf(s, "C: %f\n", C);
 }
 
 // The core model with default parameters
@@ -355,14 +336,15 @@ void study1(int section) {
 }
 
 // Study 2
-void contact(char *path, int r) {
-   dir("study2/%s_%d", path, r);
-   FILE *l = open("study2/%s_%d/lingcat.dat", path, r);
-   FILE *lo = open("study2/%s_%d/local_overlap_env.dat", path, r);
-   FILE *o = open("study2/%s_%d/overlap_env.dat", path, r);
-   FILE *s = open("study2/%s_%d/split.dat", path, r);
+void *contact(void *arg) {
+   int i = *(int*)arg;
+   dir("study2/non_uniform_A/run_%d", i);
+   FILE *l = open("study2/non_uniform_A/run_%d/lingcat.dat", i);
+   FILE *lo = open("study2/non_uniform_A/run_%d/local_overlap.dat", i);
+   FILE *o = open("study2/non_uniform_A/run_%d/overlap.dat", i);
+   FILE *s = open("study2/non_uniform_A/run_%d/split.dat", i);
 
-   Network *network = create_network(100, 0.05);
+   Network *network = create_network(100, 0.01);
    make_isolate(network, 4.0, 0.2);
 
    long double interval = 100.0;
@@ -454,12 +436,20 @@ int main(int argc, char **argv) {
    //    study0(i);
    // }
 
-   study1(16);
+   // study1(16);
 
    // study2
    // dir("study2");
-   // for (int r = 0; r < 10; r++) {
-   //    contact("contact_env", r);
+   // dir("study2/non_uniform_A");
+   // pthread_t threads[10];
+   // int thread_args[10];
+   // for (int i = 0; i < 10; i++) {
+   //    thread_args[i] = i;
+   //    pthread_create(&threads[i], NULL, contact, &thread_args[i]);
+   // }
+
+   // for (int i = 0; i < 10; i++) {
+   //    pthread_join(threads[i], NULL);
    // }
 
    // study3
