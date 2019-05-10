@@ -1,5 +1,3 @@
-// TODO: Tidy study 2
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -9,6 +7,12 @@
 #include <math.h>
 #include <pthread.h>
 #include "network.h"
+
+#define JOIN(N) {for (int __i = 0; __i < (N); __i++){pthread_join(threads[__i], NULL);}}
+#define study0
+#define study1
+#define study2
+#define study3
 
 // Create a formatted director
 void dir(char *format, ...) {
@@ -139,7 +143,8 @@ void write_compare(FILE *s, Network *network, Network *save) {
 }
 
 // The core model with default parameters
-void study0(int i) {
+void *core_model(void *arg) {
+   int i = *(int*)arg;
    dir("study0/run_%d", i);
    FILE *p = open("study0_%d/percat.dat", i);
    FILE *l = open("study0_%d/lingcat.dat", i);
@@ -167,9 +172,14 @@ void study0(int i) {
    fclose(o);
    fclose(l);
    fclose(p);
+   return 0;
 }
 
-void linear_network(int i, double h, double t) {
+struct linear_network_args {int i; double h; double t;};
+void *linear_network(void *args) {
+   int i = ((struct linear_network_args*)args)->i;
+   int h = ((struct linear_network_args*)args)->h;
+   int t = ((struct linear_network_args*)args)->t;
    dir("study1/linear_network/h=%ft=%f/run_%d", h, t, i);
    FILE *p = open("study1/linear_network/h=%ft=%f/run_%d/percat.dat", h, t, i);
    FILE *l = open("study1/linear_network/h=%ft=%f/run_%d/lingcat.dat", h, t, i);
@@ -200,9 +210,15 @@ void linear_network(int i, double h, double t) {
    fclose(o);
    fclose(l);
    fclose(p);
+
+   return 0;
 }
 
-void ring_lattice(int K, int i) {
+struct ring_lattice_args {int K; int i;};
+void *ring_lattice(void *args) {
+   int K = ((struct ring_lattice_args*)args)->K;
+   int i = ((struct ring_lattice_args*)args)->i;
+
    dir("study1/ring_lattice/K=%d/", K);
    dir("study1/ring_lattice/K=%d/run_%d", K, i);
    FILE *p = open("study1/ring_lattice/K=%d/run_%d/percat.dat", K, i);
@@ -234,13 +250,11 @@ void ring_lattice(int K, int i) {
    fclose(o);
    fclose(l);
    fclose(p);
+
+   return 0;
 }
 
-struct beta_args {
-    double beta;
-    int i;
-};
-
+struct beta_args {double beta; int i;};
 void *beta_simulation(void *args) {
    double beta = ((struct beta_args*)args)->beta;
    int i = ((struct beta_args*)args)->i;
@@ -280,69 +294,30 @@ void *beta_simulation(void *args) {
    return 0;
 }
 
-void study1(int section) {
-   dir("study1");
-
-   if (section & 2) {
-      for (int i = 0; i < 10; i++) {
-         linear_network(i, 0, 0);
-      }
-   }
-
-   if (section & 4) {
-      for (int i = 0; i < 5; i++) {
-         for (double t = 0.2; t < 0.9; t += 0.1) {
-            double h = 1.0 / t;
-            dir("study1/linear_network/h=%ft=%f", h, t);
-            linear_network(i, h, t);
-
-            h = 0.5 / t;
-            dir("study1/linear_network/h=%ft=%f", h, t);
-            linear_network(i, h, t);
-         }
-      }
-   }
-
-   if (section & 8) {
-      dir("study1/ring_lattice");
-      for (int i = 0; i < 10; i++) {
-         ring_lattice(2, i);
-         ring_lattice(4, i);
-         ring_lattice(6, i);
-         ring_lattice(8, i);
-      }
-   }
-
-   if (section & 16) {
-      dir("study1/small_world_network");
-
-      pthread_t threads[90];
-      struct beta_args thread_args[90];
-      for (int i = 0; i < 90; i++) {
-         thread_args[i] = (struct beta_args){(double)(0.0001 * pow(2.8, i % 10)), (i / 10) + 1};
-         pthread_create(&threads[i], NULL, beta_simulation, &thread_args[i]);
-      }
-
-      for (int i = 0; i < 90; i++) {
-         pthread_join(threads[i], NULL);
-      }
-
-      // for (int i = 0; i < 10; i++) {
-      //    for (double beta = 0.0001; beta < 1.0; beta *= 1.15) {
-      //       beta_simulation(beta, i);
-      //    }
-      // }
-   }
-}
-
 // Study 2
+struct contact_args {int mode; int i;};
 void *contact(void *arg) {
-   int i = *(int*)arg;
-   dir("study2/non_uniform_A/run_%d", i);
-   FILE *l = open("study2/non_uniform_A/run_%d/lingcat.dat", i);
-   FILE *lo = open("study2/non_uniform_A/run_%d/local_overlap.dat", i);
-   FILE *o = open("study2/non_uniform_A/run_%d/overlap.dat", i);
-   FILE *s = open("study2/non_uniform_A/run_%d/split.dat", i);
+   int mode = ((struct contact_args*)arg)->mode;
+   int i    = ((struct contact_args*)arg)->i;
+   assert(mode >= 0 && mode < 3);
+   const char *name;
+   switch (mode) {
+      case 0:
+         name = "uniform";
+         break;
+      case 1:
+         name = "non_uniform_uniform";
+         break;
+      case 2:
+         name = "non_uniform_non_uniform";
+         break;
+   }
+   dir("study2/%s", name);
+   dir("study2/%s/run_%d", name, i);
+   FILE *l = open("study2/%s/run_%d/lingcat.dat", name, i);
+   FILE *lo = open("study2/%s/run_%d/local_overlap.dat", name, i);
+   FILE *o = open("study2/%s/run_%d/overlap.dat", name, i);
+   FILE *s = open("study2/%s/run_%d/split.dat", name, i);
 
    Network *network = create_network(100, 0.01);
    make_isolate(network, 4.0, 0.2);
@@ -387,87 +362,190 @@ void *contact(void *arg) {
    fclose(o);
    fclose(lo);
    fclose(l);
+
+
+   return 0;
 }
 
 // Study 3
-void communities(char *path, bool rand, double l1, double l2) {
-   dir("study3/%s_%.3f_%.3f", path, l1, l2);
-   dir("study3/%s_%.3f_%.3f/dump", path, l1, l2);
-   FILE *o = open("study3/%s_%.3f_%.3f/overlap.dat", path, l1, l2);
-   FILE *l = open("study3/%s_%.3f_%.3f/local_overlap.dat", path, l1, l2);
+struct communities_args {bool live; double l1, l2; int i;};
+void *communities(void *args) {
+   double l1 = ((struct communities_args*)args)->l1;
+   double l2 = ((struct communities_args*)args)->l2;
+   int i = ((struct communities_args*)args)->i;
+   bool live = ((struct communities_args*)args)->live;
+   const char *name = live ? "live" : "null";
+   dir("study3/%s_model/l1=%fl2=%f/", name, l1, l2);
+   dir("study3/%s_model/l1=%fl2=%f/run_%d", name, l1, l2, i);
+   dir("study3/%s_model/l1=%fl2=%f/run_%d/matrix", name, l1, l2, i);
+   FILE *o = open("study3/%s_model/l1=%fl2=%f/run_%d/overlap.dat", name, i, l1, l2);
+   FILE *l = open("study3/%s_model/l1=%fl2=%f/run_%d/local_overlap.dat", name, i, l1, l2);
+   FILE *c = open("study3/%s_model/l1=%fl2=%f/run_%d/local_overlap.dat", name, i, l1, l2);
 
-   Network *network = create_network(100, 0.05);
+   Network *network = create_network(100, 0.01);
    make_complete(network, 0.5);
 
    long double interval = 100.0;
    for (unsigned long long int t = 0; t < 100e7; t++) {
-      step(network, -1, true, rand, l1, l2);
+      step(network, -1, true, true, l1, l2);
 
       if (t >= interval) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
          interval *= 1.1;
          printf("Running: %Lf%%\n", t / 100e7 * 100.0l);
 
-         FILE *n = open("study3/%s_%.3f_%.3f/dump/%d.dat", path, l1, l2, t);
+         FILE *n = open("study3/%s_model/l1=%fl2=%f/run_%d/matrix/%d.dat", name, l1, l2, i, t);
          write_weights(n, network);
          fclose(n);
 
-         write_overlap(o, network, t, false, false);
-         write_overlap(l, network, t, false, true);
+         write_overlap(o, network, t, true, false);
+         write_overlap(l, network, t, true, true);
+         write_lingcat(c, network, t);
       }
    }
 
    delete_network(network);
 
-   fclose(o);
+   fclose(c);
    fclose(l);
+   fclose(o);
+
+   return 0;
 }
 
 // Entry point
 int main(int argc, char **argv) {
-   setbuf(stdout,NULL);
+   // reorginise dir
+   #if defined(study0)
+   {
+      dir("study0"); 
+      pthread_t threads[10];
+      int thread_args[10];
+      for (int i = 0; i < 10; i++) {
+         thread_args[i] = i;
+         pthread_create(&threads[i], NULL, core_model, &thread_args[i]);
+      }
+      JOIN(10);
+   }
+   #endif
 
-   time_t t;
-   srand((unsigned) time(&t));
-   clock_t begin = clock();
+   #if defined(study1)
+   {
+      dir("study1");
+      pthread_t threads[100];
 
-   // study0
-   // dir("study0");
-   // for (int i = 0; i < 10; i++) {
-   //    study0(i);
-   // }
+      dir("study1/linear_network");
+      struct linear_network_args linear_network_args[100];
+      int k = 0;
+      for (int i = 0; i < 10; i++) {
+         linear_network_args[k] = (struct linear_network_args) {i, 0, 0};
+         pthread_create(&threads[k], NULL, linear_network, &linear_network_args[i]);
+         k++;
 
-   // study1(16);
+         for (double t = 0.1; t < 1.0; t += 0.1) {
+            double h = 1.0 / t;
+            linear_network_args[k] = (struct linear_network_args) {i, h, t};
+            pthread_create(&threads[k], NULL, linear_network, &linear_network_args[i]);
+            k++;
 
-   // study2
-   // dir("study2");
-   // dir("study2/non_uniform_A");
-   // pthread_t threads[10];
-   // int thread_args[10];
-   // for (int i = 0; i < 10; i++) {
-   //    thread_args[i] = i;
-   //    pthread_create(&threads[i], NULL, contact, &thread_args[i]);
-   // }
+            if (t < 0.5) {
+               h = 0.5 / t;
+               linear_network_args[k] = (struct linear_network_args) {i, h, t};
+               pthread_create(&threads[k], NULL, linear_network, &linear_network_args[i]);
+               k++;
+            }
+         }
+      }
+      JOIN(k);
 
-   // for (int i = 0; i < 10; i++) {
-   //    pthread_join(threads[i], NULL);
-   // }
+      dir("study1/ring_lattice");
+      struct ring_lattice_args ring_lattice_args[40];
+      k = 0;
+      for (int i = 0; i < 10; i++) {
+         ring_lattice_args[k] = (struct ring_lattice_args){2, i};
+         pthread_create(&threads[k], NULL, ring_lattice, &ring_lattice_args[i]);
+         k++;
+         ring_lattice_args[k] = (struct ring_lattice_args){4, i};
+         pthread_create(&threads[k], NULL, ring_lattice, &ring_lattice_args[k]);
+         k++;
+         ring_lattice_args[k] = (struct ring_lattice_args){6, i};
+         pthread_create(&threads[k], NULL, ring_lattice, &ring_lattice_args[k]);
+         k++;
+         ring_lattice_args[k] = (struct ring_lattice_args){8, i};
+         pthread_create(&threads[k], NULL, ring_lattice, &ring_lattice_args[k]);
+         k++;
+      }
+      JOIN(k);
+      
+      dir("study1/small_world_network");
+      struct beta_args beta_args[100];
+      for (int i = 0; i < 100; i++) {
+         double beta = i % 10 == 0 ? 0 : 0.0001 * pow(2.8, i % 10);
+         beta_args[i] = (struct beta_args){beta, i / 10};
+         pthread_create(&threads[i], NULL, beta_simulation, &beta_args[i]);
+      }
+      JOIN(100);
+   }
+   #endif
 
-   // study3
-   // dir("study3");
-   // double l1 = 0.0;
-   // for (int i = 0; i < 3; i++) {
-   //    l1 += 0.15;
-   //    double l2 = 0.0;
-   //    for (int j = 0; j < 3; j++) {
-   //       l2 += 0.15;
-   //       communities("communities", false, l1, l2);
-   //       communities("communities_rand", true, l1, l2);
-   //    }
-   // }
+   #if defined(study2)
+   {
+      dir("study2");
+      pthread_t threads[30];
+      struct contact_args contact_args[30];
+      int k = 0;
+      for (int i = 0; i < 10; i++) {
+         for (int j = 0; j < 3; j++) {
+            contact_args[k] = (struct contact_args) {j, i};
+            pthread_create(&threads[k], NULL, contact, &contact_args[k]);
+            k++;
+         }
+      }
 
-   clock_t end = clock();
-   double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-   printf("Done in: %f seconds.", time_spent);
-   getchar();
+      JOIN(k);
+   }
+   #endif
+
+   #if defined(study3)
+   {
+      dir("study3"); 
+      pthread_t threads[90];
+
+      dir("study3/null_model");
+      struct communities_args thread_args[90];
+      int thread = 0;
+      for (int k = 0; k < 10; k++) {
+         double l1 = 0.15;
+         for (int i = 0; i < 3; i++) {
+            l1 += 0.15;
+            double l2 = 0.0;
+            for (int j = 0; j < 3; j++) {
+               l2 += 0.15;
+               thread_args[thread] = (struct communities_args) {false, l1, l2, k};
+               pthread_create(&threads[thread], NULL, communities, &thread_args[thread]);
+               thread++;
+            }
+         }
+      }
+      JOIN(90);
+
+      dir("study3/live_model");
+      thread = 0;
+      for (int k = 0; k < 10; k++) {
+         double l1 = 0;
+         for (int i = 0; i < 3; i++) {
+            l1 += 0.15;
+            double l2 = 0.0;
+            for (int j = 0; j < 3; j++) {
+               l2 += 0.15;
+               thread_args[thread] = (struct communities_args) {true, l1, l2, k};
+               pthread_create(&threads[thread], NULL, communities, &thread_args[thread]);
+               thread++;
+            }
+         }
+      }
+      JOIN(90);
+   }
+   #endif
+
    return 0;
 }
