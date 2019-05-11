@@ -42,7 +42,7 @@ def community_size(path):
    fig.tight_layout()
    plt.show()
 
-def modularity():
+def modularity(path):
    a = [0.15, 0.3, 0.45]
    b = [0.15, 0.3, 0.45]
 
@@ -60,7 +60,7 @@ def modularity():
                   # xycoords=ax.yaxis.label, textcoords='offset points',
                   # size='large', ha='right', va='center')
 
-   for dir0 in os.listdir('study3/null_model'):
+   for dir0 in os.listdir('study3/' + path):
       m = re.match(r"l1=([0-9\.]+)l2=([0-9\.]+)", dir0)
       if m != None:
          l1 = float(m.groups()[0])
@@ -76,15 +76,15 @@ def modularity():
             for d in range(0, 10):
                T_d = []
                modularity_d = []
-               for dir in os.listdir('study3/null_model/' + dir0 + ('/run_%d/partition' % d)):
+               for dir in os.listdir('study3/' + path + '/' + dir0 + ('/run_%d/partition' % d)):
                   m = re.match(r"([0-9]+)\.dat", dir)
                   if m != None:
-                     ma = np.loadtxt('study3/null_model/'  + dir0 + ('/run_%d/matrix/' % d) + dir, delimiter=' ')
+                     ma = np.loadtxt('study3/' + path + '/'  + dir0 + ('/run_%d/matrix/' % d) + dir, delimiter=' ')
                      G = nx.Graph()
                      for [a1, b1, w] in ma:
                         if w > 0:
                            G.add_edge(a1, b1, weight = w)
-                     partition = np.loadtxt('study3/null_model/'  + dir0 + ('/run_%d/partition/' % d) + dir, delimiter=' ')
+                     partition = np.loadtxt('study3/' + path + '/'  + dir0 + ('/run_%d/partition/' % d) + dir, delimiter=' ')
                      partition = {k :int(partition[k]) for k in range(len(partition))}
                      modularity_d.append((community.modularity(partition, G)))
                      T_d.append(int(m.groups(0)[0])) 
@@ -117,10 +117,10 @@ def modularity():
          fig.tight_layout()
          fig.savefig('modularity%d%d.png' % (i, j))
 
-def build_partition():
+def build_partition(path):
    a = [0.15, 0.3, 0.45]
    b = [0.15, 0.3, 0.45]
-   for dir0 in os.listdir('study3/null_model'):
+   for dir0 in os.listdir('study3/' + path):
       m = re.match(r"l1=([0-9\.]+)l2=([0-9\.]+)", dir0)
       if m != None:
          l1 = float(m.groups()[0])
@@ -131,18 +131,21 @@ def build_partition():
             for d in range(0, 10):
                T_d = []
                modularity_d = []
-               for dir in os.listdir('study3/null_model/' + dir0 + ('/run_%d/matrix' % d)):
+               for dir in os.listdir('study3/' + path '/' dir0 + ('/run_%d/matrix' % d)):
                   m = re.match(r"([0-9]+)\.dat", dir)
                   if m != None:
-                     ma = np.loadtxt('study3/null_model/'  + dir0 + ('/run_%d/matrix/' % d) + dir, delimiter=' ')
+                     ma = np.loadtxt('study3/' + path + '/'  + dir0 + ('/run_%d/matrix/' % d) + dir, delimiter=' ')
                      G = nx.Graph()
                      for [a1, b1, w] in ma:
                         if w > 0:
                            G.add_edge(a1, b1, weight = w)
                      partition = community.best_partition(G)
-                     if not os.path.exists('study3/null_model/' + dir0 + ('/run_%d/partition/' % d)):
-                        os.makedirs('study3/null_model/' + dir0 + ('/run_%d/partition/' % d))
-                     np.savetxt('study3/null_model/' + dir0 + ('/run_%d/partition/' % d) + dir, partition.values(), delimiter=' ')
+                     if not os.path.exists('study3/' + path + '/' + dir0 + ('/run_%d/partition/' % d)):
+                        os.makedirs('study3/' + path + '/' + dir0 + ('/run_%d/partition/' % d))
+                     np.savetxt('study3/' + path + '/' + dir0 + ('/run_%d/partition/' % d) + dir, partition.values(), delimiter=' ')
+
+build_partition('null_model')
+build_partition('live_model')
 
 community_size('study3/null_model/l1=0.300000l2=0.300000')
 community_size('study3/live_model/l1=0.300000l2=0.300000')

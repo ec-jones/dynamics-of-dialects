@@ -342,8 +342,8 @@ def beta_comparison():
 
    print stats.linregress(path, glor), stats.linregress(clustering, glor)
 
-def contact():
-   average('study2/non_uniform_A', local = True, lingcat = True, split = True)
+def contact(path):
+   average('study2/' + path, local = True, lingcat = True, split = True)
 
    fig, [ax1, ax2] = plt.subplots(1, 2)
    ax1.set_xlabel('Games per player')
@@ -353,8 +353,8 @@ def contact():
    ax1.set_title('Pre-contact')
    ax2.set_title('Post-contact')
 
-   x, y = np.loadtxt('study2/non_uniform_A/run_avg/lingcat.dat', delimiter=' ', unpack=True)
-   _, yerr = np.loadtxt('study2/non_uniform_A/run_err/lingcat.dat', delimiter=' ', unpack=True)
+   x, y = np.loadtxt('study2/' + path + '/run_avg/lingcat.dat', delimiter=' ', unpack=True)
+   _, yerr = np.loadtxt('study2/' + path + '/run_err/lingcat.dat', delimiter=' ', unpack=True)
    for i in range(0, len(yerr)):
       if i % 10 != 0:
          yerr[i] = 0
@@ -388,8 +388,8 @@ def contact():
    ax1.set_title('Pre-contact')
    ax2.set_title('Post-contact')
 
-   x, y = np.loadtxt('study2/non_uniform_A/run_avg/local_overlap.dat', delimiter=' ', unpack=True)
-   _, yerr = np.loadtxt('study2/non_uniform_A/run_err/local_overlap.dat', delimiter=' ', unpack=True)
+   x, y = np.loadtxt('study2/' + path + '/run_avg/local_overlap.dat', delimiter=' ', unpack=True)
+   _, yerr = np.loadtxt('study2/' + path + '/run_err/local_overlap.dat', delimiter=' ', unpack=True)
    for i in range(0, len(yerr)):
       if i % 10 != 0:
          yerr[i] = 0

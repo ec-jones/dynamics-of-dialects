@@ -3,21 +3,19 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as stats
-from sklearn.mixture import GaussianMixture
-from scipy import optimize
 
 
 def read(line):
    return float(line[:-1].split(' ')[1])
 
-def contact_env():
+def contact_env(path):
    origA = []
    origB = []
    A = []
    B = []
    for i in range(0, 10):
       run = 'run_%d' % i
-      path = 'study2/non_uniform_A/' + run + '/'
+      path = 'study2/' + path + '/' + run + '/'
       try:
          f_A = []
          f_B = []
@@ -41,14 +39,14 @@ def contact_env():
 
    return origA, origB, A, B
 
-def split():
+def split(path):
    origA = []
    origB = []
    A = []
    B = []
    for i in range(0, 10):
       run = 'run_%d' % i
-      path = 'study2/non_uniform_A/' + run + '/'
+      path = 'study2/' + path + '/' + run + '/'
       try:
          f_A = []
          f_B = []
@@ -71,67 +69,7 @@ def split():
          pass
    return origA, origB, A, B
 
-def local_overlap():
-   local_overlap = []
-   for dir in os.listdir('study2'):
-      m = re.match(r"contact_[0-9]+", dir)
-      try:
-         if m != None:
-           local_overlap.append(np.loadtxt('study2/' + dir + '/local_overlap_env.dat', delimiter=' '))
-      except:
-         pass
-   local_overlap_mean = np.mean(local_overlap, axis = 0)
-   xs1 = local_overlap_mean[0:len(local_overlap_mean) / 2,0]
-   ys1 = local_overlap_mean[0:len(local_overlap_mean) / 2,1]
-   xs2 = local_overlap_mean[len(local_overlap_mean) / 2:,0]
-   ys2 = local_overlap_mean[len(local_overlap_mean) / 2:,1]
-
-   fig, [ax1, ax2] = plt.subplots(1, 2)
-   ax1.set_xscale('log')
-   ax1.set_ylim([0, 1])
-   ax1.plot(xs1 / 100, ys1)
-   ax1.set_title('Pre contact')
-   ax1.set_xlabel('Games per player')
-   ax1.set_ylabel('Local overlap')
-
-   ax2.set_xscale('log')
-   ax2.set_ylim([0, 1])
-   ax2.plot(xs2 / 100, ys2)
-   ax2.set_title('Post contact')
-   ax2.set_xlabel('Games per player')
-   ax2.set_ylabel('Local overlap')
-   plt.show()
-
-def lingcat():
-   lingcat = []
-   for dir in os.listdir('study2'):
-      m = re.match(r"contact_[0-9]+", dir)
-      try:
-         if m != None:
-           lingcat.append(np.loadtxt('study2/' + dir + '/lingcat.dat', delimiter=' '))
-      except:
-         pass
-   lingcat_mean = np.mean(lingcat, axis = 0)
-   xs1 = lingcat_mean[0:len(lingcat_mean) / 2,0]
-   ys1 = lingcat_mean[0:len(lingcat_mean) / 2,1]
-   xs2 = lingcat_mean[len(lingcat_mean) / 2:,0]
-   ys2 = lingcat_mean[len(lingcat_mean) / 2:,1]
-
-   fig, [ax1, ax2] = plt.subplots(1, 2)
-   ax1.set_xscale('log')
-   ax1.set_ylim([0, 20])
-   ax1.plot(xs1 / 100, ys1)
-   ax1.set_title('Pre contact')
-   ax1.set_xlabel('Games per player')
-   ax1.set_ylabel('Linguistic category')
-
-   ax2.set_xscale('log')
-   ax2.set_ylim([0, 20])
-   ax2.plot(xs2 / 100, ys2)
-   ax2.set_title('Post contact')
-   ax2.set_xlabel('Games per player')
-   ax2.set_ylabel('Linguistic category')
-   plt.show()
+#######
 
 origA, origB, A, B = split()
 
@@ -155,7 +93,6 @@ for i in range(0, 20):
    else:
       N[i] = np.mean(B, axis=0)[i+1]
 
-print stats.pearsonr(np.array([np.mean(A, axis=0)[4:-5] ,np.mean(B, axis=0)[4:-5]]).flatten(), np.array([M[4:-5] ,N[4:-5]]).flatten())
 print stats.ttest_1samp(origB, 0.5)
 print(np.mean(origA))
 print(np.mean(origB))

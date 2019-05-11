@@ -8,11 +8,12 @@
 #include <pthread.h>
 #include "network.h"
 
-#define JOIN(N) {for (int __i = 0; __i < (N); __i++){pthread_join(threads[__i], NULL);}}
 #define study0
 #define study1
 #define study2
 #define study3
+
+#define JOIN(N) {for (int __i = 0; __i < (N); __i++){pthread_join(threads[__i], NULL);}}
 
 // Create a formatted director
 void dir(char *format, ...) {
