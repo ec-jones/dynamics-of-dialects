@@ -1,3 +1,7 @@
+# Multiagent Simulation of Dialect
+
+## Usage
+
 To run: ./simulation
 The parameters of the simulation are set interally so they can run in parallel.
 
@@ -8,6 +12,8 @@ of these studies the study1/2/3 directives can be set.
 The scripts statistics.py, study2.py, and study3.py contain the functions and methods used to manipulate the recorded data. However, this is just for internal use; the main body of these files doesn't maintian the function calls used for all the statistic of the encompanying report.
 
 This project makes use of the python-louvain, networkx, numpy, matplotlib, and scipy python libraries, to run these libraries must be installed. If a binary form is to be redistributed, it must contain the following copyrights:
+
+## Copyrights
 
 Copyright © 2009,
 Thomas Aynaud <thomas.aynaud@lip6.fr>.
