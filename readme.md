@@ -1,4 +1,4 @@
-# Multiagent Simulation of Dialect
+# Multiagent Simulation of Dialects
 
 ## Usage
 
